@@ -31,7 +31,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.nio.file.*;
 import static edu.utdallas.objsim.commons.misc.NameUtils.decomposeMethodName;
 import static org.pitest.bytecode.FrameOptions.pickFlags;
 
@@ -76,6 +76,20 @@ public class PrimaryTransformer implements ClassFileTransformer {
         final ClassVisitor classVisitor = new PrimaryTransformerClassVisitor(classfileBuffer,
                 classWriter, this.patchedMethodFullName);
         classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
+        
+        // This is to write the byte array to a file.
+        try {
+        	Path outputFolder = Paths.get("/Users/austin/Desktop/outputs");
+        	if (!Files.exists(outputFolder, new LinkOption[] {})) {
+        		Files.createDirectory(outputFolder);
+        	}
+        	Path outputFile = outputFolder.resolve(className.replace("/", "_") + ".class");
+        	System.err.println("Outputfile is " + outputFile.toString());
+        	Files.write(outputFile, classWriter.toByteArray());
+        } catch (Exception ex) {
+        	System.err.println(ex.getMessage());
+        	ex.printStackTrace();
+        }
         return classWriter.toByteArray();
     }
 }

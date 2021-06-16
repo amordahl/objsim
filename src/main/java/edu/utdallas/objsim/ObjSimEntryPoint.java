@@ -66,6 +66,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -146,6 +147,9 @@ public class ObjSimEntryPoint {
 
     /**
      * Entry point for the entire system!
+     * 
+     * This method reads in the CSV files and parses them into the records LinkedList.
+     * 
      *
      * @throws Exception Any failure
      */
@@ -180,13 +184,20 @@ public class ObjSimEntryPoint {
                     this.whiteListPrefix,
                     record.patchedMethod,
                     coveringTests);
+            
+            originalSnapshots.forEach(new BiConsumer<String, Wrapped[]>() {
+				@Override
+				public void accept(String t, Wrapped[] u) {
+					System.err.println(String.format("%s: %s", t, u.toString()));
+				}
+            });
+            	
             // run covering tests on patched program
             final Map<String, Wrapped[]> patchedSnapshots = Profiler.getSnapshots(defaultProcessArgs,
                     targetDirectory,
                     record.classFile,
                     this.whiteListPrefix,
-                    record.patchedMethod,
-                    coveringTests);
+                    record.patchedMethod);
             final File patchBaseDir = new File(outputDir, "patch-" + record.patchId);
             if (patchBaseDir.isDirectory()) {
                 FileUtils.deleteDirectory(patchBaseDir);
@@ -463,6 +474,24 @@ public class ObjSimEntryPoint {
             }
         }
     }
+    
+	private void saveSnapshots(final File patchBaseDir, final Map<String, Wrapped[]> originalSnapshots) throws Exception {
+		if (!patchBaseDir.mkdirs()) {
+			throw new RuntimeException("Unable to create folder " + patchBaseDir.getAbsolutePath());
+		}
+		final File original = new File(patchBaseDir, "original.gz");
+		try (final OutputStream oriOS = new FileOutputStream(original);
+				final OutputStream oriBOS = new BufferedOutputStream(oriOS);
+				final OutputStream oriGZOS = new GZIPOutputStream(oriBOS);
+				final ObjectOutputStream oriOOS = new ObjectOutputStream(oriGZOS)) {
+			for (final String testName : coveringTests) {
+				final boolean wasFailing = isFailingTest.apply(testName);
+				oriOOS.writeObject(testName);
+				oriOOS.writeBoolean(wasFailing);
+				oriOOS.writeObject(originalSnapshots.get(testName));
+			}
+		}
+	}
 
     private Predicate<String> getFailingTestsPredicate() {
         return new Predicate<String>() {

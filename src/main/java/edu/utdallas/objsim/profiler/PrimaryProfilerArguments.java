@@ -51,6 +51,14 @@ class PrimaryProfilerArguments extends AbstractChildProcessArguments {
         this.accessedFields = accessedFields;
     }
 
+	PrimaryProfilerArguments(final String patchedMethodName,
+			final FieldsDom fieldsDom, final Collection<Integer> accessedFields) {
+		super(patchedMethodName);
+		Validate.isInstanceOf(Serializable.class, accessedFields);
+		this.fieldsDom = fieldsDom;
+		this.accessedFields = accessedFields;
+	}
+
     public FieldsDom getFieldsDom() {
         return this.fieldsDom;
     }

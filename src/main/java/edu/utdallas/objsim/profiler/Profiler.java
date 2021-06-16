@@ -108,11 +108,11 @@ public final class Profiler {
             HotSwapAgent.addTransformer(transformer);
 
             final ProfilerReporter reporter = new ProfilerReporter(socket.getOutputStream());
-
-            final JUnitRunner runner = new JUnitRunner(testNameToTestUnit(arguments.getCoveringTestNames()));
-            runner.setTestUnits(decorateTestCases(runner.getTestUnits(), reporter));
-            runner.run();
-
+//
+//            final JUnitRunner runner = new JUnitRunner(testNameToTestUnit(arguments.getCoveringTestNames()));
+//            runner.setTestUnits(decorateTestCases(runner.getTestUnits(), reporter));
+//            runner.run();
+//
             if (isPreludeStage) {
                 reporter.reportFieldsDom(fieldsDom);
                 reporter.reportFieldAccesses(FieldAccessRecorder.getFieldAccesses());
@@ -190,6 +190,15 @@ public final class Profiler {
         return new ImmutablePair<>(process.getFieldsDom(), process.getFieldAccesses());
     }
 
+	private static Pair<FieldsDom, ? extends List<Integer>> runPrelude(final ProcessArgs defaultProcessArgs,
+			final String whiteListPrefix, final String patchedMethodFullName) throws IOException, InterruptedException {
+		final PreludeProfilerArguments arguments = new PreludeProfilerArguments(whiteListPrefix, patchedMethodFullName);
+		final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
+		process.start();
+		process.waitToDie();
+		return new ImmutablePair<>(process.getFieldsDom(), process.getFieldAccesses());
+	}
+
     public static Map<String, Wrapped[]> getSnapshots(final ProcessArgs defaultProcessArgs,
                                                       final File targetDirectory,
                                                       final File patchedClassFile,
@@ -206,8 +215,18 @@ public final class Profiler {
                 coveringTestNames);
         backup.restore();
         return process.getSnapshots();
-    }
+	}
 
+	public static Map<String, Wrapped[]> getSnapshots(final ProcessArgs defaultProcessArgs, final File targetDirectory,
+			final File patchedClassFile, final String whiteListPrefix, final String patchedMethodFullName)
+			throws IOException, InterruptedException {
+		Validate.isTrue(patchedClassFile.isFile());
+		Validate.isTrue(targetDirectory.isDirectory());
+		final Backup backup = backup(new File(targetDirectory, "classes"), patchedClassFile);
+		final ProfilerProcess process = runProcess(defaultProcessArgs, whiteListPrefix, patchedMethodFullName);
+		backup.restore();
+		return process.getSnapshots();
+	}
     public static Map<String, Wrapped[]> getSnapshots(final ProcessArgs defaultProcessArgs,
                                                       final String whiteListPrefix,
                                                       final String patchedMethodFullName,
@@ -236,6 +255,19 @@ public final class Profiler {
         return process;
     }
 
+	private static ProfilerProcess runProcess(final ProcessArgs defaultProcessArgs, final String whiteListPrefix,
+			final String patchedMethodFullName)
+			throws IOException, InterruptedException {
+		final Pair<FieldsDom, ? extends List<Integer>> preludeResult = runPrelude(defaultProcessArgs, whiteListPrefix,
+				patchedMethodFullName);
+		final FieldsDom fieldsDom = preludeResult.getLeft();
+		final List<Integer> accessedFields = preludeResult.getRight();
+		final AbstractChildProcessArguments arguments = new PrimaryProfilerArguments(patchedMethodFullName, fieldsDom, accessedFields);
+		final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
+		process.start();
+		process.waitToDie();
+		return process;
+	}
     private static Backup backup(final File baseDirectory,
                                  final File patchedClassFile) throws IOException {
         final String classFullName = NameUtils.getClassName(patchedClassFile);
