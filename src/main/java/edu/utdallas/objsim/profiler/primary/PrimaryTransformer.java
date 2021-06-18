@@ -26,6 +26,8 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.pitest.classinfo.ClassByteArraySource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
@@ -44,20 +46,10 @@ import static org.pitest.bytecode.FrameOptions.pickFlags;
  */
 public class PrimaryTransformer implements ClassFileTransformer {
     private final ClassByteArraySource byteArraySource;
-
+    private static Logger logger = LoggerFactory.getLogger(PrimaryTransformer.class);
     private final Map<String, String> cache;
 
-    private final String patchedClassName;
-
-    private final String patchedMethodFullName;
-
-    public PrimaryTransformer(final String patchedMethodFullName,
-                              final ClassByteArraySource byteArraySource) {
-        final int indexOfLP = patchedMethodFullName.indexOf('(');
-        final Pair<String, String> methodNameParts =
-                decomposeMethodName(patchedMethodFullName.substring(0, indexOfLP));
-        this.patchedClassName = methodNameParts.getLeft().replace('.', '/');
-        this.patchedMethodFullName = patchedMethodFullName;
+    public PrimaryTransformer(final ClassByteArraySource byteArraySource) {
         this.cache = new HashMap<>();
         this.byteArraySource = byteArraySource;
     }
@@ -75,14 +67,14 @@ public class PrimaryTransformer implements ClassFileTransformer {
                             Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain,
                             byte[] classfileBuffer) {
-    	if (className.contains("utdallas")) {
-    		System.err.println("Skipping class " + className);
-    		return null;
-    	}
-    	System.err.println("ClassName is " + className);
+        if (className.contains("utdallas") || className.contains("proxy")) {
+        	// TODO: Come up with better filter.
+        	logger.warn("Using an imprecise class filter.");
+            return null; // no transformation
+        }
         final ClassReader classReader = new ClassReader(classfileBuffer);
         final ClassWriter classWriter = new ComputeClassWriter(this.byteArraySource, this.cache, pickFlags(classfileBuffer));
-        final ClassVisitor classVisitor = new PrimaryTransformerClassVisitor(classfileBuffer, classWriter);
+        final ClassVisitor classVisitor = new PrimaryTransformerClassVisitor(classfileBuffer,classWriter);
         classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
         
         // This is to write the byte array to a file.

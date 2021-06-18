@@ -24,6 +24,8 @@ import edu.utdallas.objsim.commons.asm.MethodUtils;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Modifier;
 
@@ -40,23 +42,14 @@ import static org.objectweb.asm.Opcodes.ASM7;
 class PrimaryTransformerClassVisitor extends ClassVisitor {
     private final byte[] classFileByteArray;
 
-    private final String patchedMethodFullName;
-
+    private static Logger logger = LoggerFactory.getLogger(PrimaryTransformerClassVisitor.class);
     private String owner;
 
     public PrimaryTransformerClassVisitor(final byte[] classFileByteArray,
-                                          final ClassVisitor classVisitor,
-                                          final String patchedMethodFullName) {
+                                          final ClassVisitor classVisitor) {
         super(ASM7, classVisitor);
-		this.classFileByteArray = classFileByteArray;
-		this.patchedMethodFullName = patchedMethodFullName;
-	}
-
-	public PrimaryTransformerClassVisitor(final byte[] classFileByteArray, final ClassVisitor classVisitor) {
-		super(ASM7, classVisitor);
-		this.classFileByteArray = classFileByteArray;
-		this.patchedMethodFullName = null;
-	}
+        this.classFileByteArray = classFileByteArray;
+    }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
@@ -68,16 +61,17 @@ class PrimaryTransformerClassVisitor extends ClassVisitor {
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         final MethodVisitor defMethodVisitor = super.visitMethod(access, name,
                 descriptor, signature, exceptions);
+        
+        logger.info(String.format("Visiting method with name %s", name));
         int skip = 0;
         if (name.equals("<init>")) {
             skip = 1 + MethodUtils.getFirstSpecialInvoke(this.classFileByteArray, descriptor);
 //            System.out.printf("INFO: %d INVOKESPECIAL instruction(s) will be skipped.%n", skip);
         }
-        final String methodFullName = composeMethodFullName(this.owner, name, descriptor);
-        final boolean isStatic = Modifier.isStatic(access);
-        final Type[] paramTypes = Type.getArgumentTypes(descriptor);
-        final Type retType = Type.getReturnType(descriptor);
-        return new PrimaryMethodTransformer(defMethodVisitor, isStatic, paramTypes, retType, skip);
-        //return defMethodVisitor;
+		final boolean isStatic = Modifier.isStatic(access);
+		final Type[] paramTypes = Type.getArgumentTypes(descriptor);
+		final Type retType = Type.getReturnType(descriptor);
+		return new PrimaryMethodTransformer(defMethodVisitor, isStatic, paramTypes, retType, skip);
+
     }
 }

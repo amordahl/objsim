@@ -39,20 +39,16 @@ import static org.objectweb.asm.Opcodes.ASM7;
 public class PreludeTransformerClassVisitor extends ClassVisitor {
     private final byte[] classFileBytes;
 
-    private final String patchedMethodFullName;
-
     private final FieldsDom fieldsDom;
 
     private String owner;
 
     public PreludeTransformerClassVisitor(final ClassVisitor classVisitor,
                                           final byte[] classFileBytes,
-                                          final String patchedMethodFullName,
                                           final FieldsDom fieldsDom) {
         super(ASM7, classVisitor);
         this.classFileBytes = classFileBytes;
         this.fieldsDom = fieldsDom;
-        this.patchedMethodFullName = patchedMethodFullName;
     }
 
     public PreludeTransformerClassVisitor(ClassVisitor classVisitor, byte[] classFileBytes, FieldsDom fieldsDom) {
@@ -76,12 +72,7 @@ public class PreludeTransformerClassVisitor extends ClassVisitor {
             skips = 1 + MethodUtils.getFirstSpecialInvoke(this.classFileBytes, descriptor);
 //            System.out.printf("INFO: %d INVOKESPECIAL instruction(s) will be skipped.%n", skips);
         }
-        final String methodFullName = composeMethodFullName(this.owner, name, descriptor);
-        // Austin Mordahl: Adding extra condition here to treat basically every method as a patched method.
-        if (this.patchedMethodFullName.equals(methodFullName) || this.patchedMethodFullName == null) {
-            final MethodVisitor decorator = new PatchedMethodDecorator(defMethodVisitor, skips);
-            return new FieldAccessRecorderMethodVisitor(decorator, this.fieldsDom);
-        }
-        return new FieldAccessRecorderMethodVisitor(defMethodVisitor, this.fieldsDom);
+        final MethodVisitor decorator = new PatchedMethodDecorator(defMethodVisitor, skips);
+        return new FieldAccessRecorderMethodVisitor(decorator, this.fieldsDom);
     }
 }

@@ -44,6 +44,8 @@ import org.pitest.process.JavaExecutableLocator;
 import org.pitest.process.KnownLocationJavaExecutableLocator;
 import org.pitest.process.LaunchOptions;
 import org.pitest.process.ProcessArgs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -54,7 +56,6 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -82,434 +83,400 @@ import java.util.zip.GZIPOutputStream;
  * @author Ali Ghanbari (ali.ghanbari@utdallas.edu)
  */
 public class ObjSimEntryPoint {
-	private final File baseDirectory;
+    private final File baseDirectory;
 
-	private final ClassPath classPath;
+    private final ClassPath classPath;
 
-	private final ClassByteArraySource byteArraySource;
+    private final ClassByteArraySource byteArraySource;
 
-	private final String whiteListPrefix;
+    private final String whiteListPrefix;
 
-	private final File compatibleJREHome;
+    private final File compatibleJREHome;
 
-	private final List<String> childJVMArgs;
+    private final List<String> childJVMArgs;
 
-	private final File inputCSVFile;
+    private final File inputCSVFile;
 
-	private final Set<String> failingTests;
+    private final Set<String> failingTests;
+    
+    private static Logger logger = LoggerFactory.getLogger(ObjSimEntryPoint.class);
 
-	private ObjSimEntryPoint(final File baseDirectory,
-			final ClassPath classPath,
-			final ClassByteArraySource byteArraySource,
-			final String whiteListPrefix,
-			final File compatibleJREHome,
-			final List<String> childJVMArgs,
-			final File inputCSVFile,
-			final Set<String> failingTests) {
-		this.baseDirectory = baseDirectory;
-		this.classPath = classPath;
-		this.byteArraySource = byteArraySource;
-		this.whiteListPrefix = whiteListPrefix;
-		this.compatibleJREHome = compatibleJREHome;
-		this.childJVMArgs = childJVMArgs;
-		this.inputCSVFile = inputCSVFile;
-		this.failingTests = failingTests;
-	}
+    private ObjSimEntryPoint(final File baseDirectory,
+                             final ClassPath classPath,
+                             final ClassByteArraySource byteArraySource,
+                             final String whiteListPrefix,
+                             final File compatibleJREHome,
+                             final List<String> childJVMArgs,
+                             final File inputCSVFile,
+                             final Set<String> failingTests) {
+        this.baseDirectory = baseDirectory;
+        this.classPath = classPath;
+        this.byteArraySource = byteArraySource;
+        this.whiteListPrefix = whiteListPrefix;
+        this.compatibleJREHome = compatibleJREHome;
+        this.childJVMArgs = childJVMArgs;
+        this.inputCSVFile = inputCSVFile;
+        this.failingTests = failingTests;
+    }
 
-	public static ObjSimEntryPoint createEntryPoint() {
-		return new ObjSimEntryPoint(null, null, null, null, null, null, null, null);
-	}
+    public static ObjSimEntryPoint createEntryPoint() {
+        return new ObjSimEntryPoint(null, null, null, null, null, null, null, null);
+    }
 
-	public ObjSimEntryPoint withBaseDirectory(final File baseDirectory) {
-		return new ObjSimEntryPoint(baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
-	}
+    public ObjSimEntryPoint withBaseDirectory(final File baseDirectory) {
+        return new ObjSimEntryPoint(baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
+    }
 
-	public ObjSimEntryPoint withClassPath(final ClassPath classPath) {
-		return new ObjSimEntryPoint(this.baseDirectory, classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
-	}
+    public ObjSimEntryPoint withClassPath(final ClassPath classPath) {
+        return new ObjSimEntryPoint(this.baseDirectory, classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
+    }
 
-	public ObjSimEntryPoint withClassByteArraySource(final ClassByteArraySource byteArraySource) {
-		return new ObjSimEntryPoint(this.baseDirectory, this.classPath, byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
-	}
+    public ObjSimEntryPoint withClassByteArraySource(final ClassByteArraySource byteArraySource) {
+        return new ObjSimEntryPoint(this.baseDirectory, this.classPath, byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
+    }
 
-	public ObjSimEntryPoint withWhiteListPrefix(final String whiteListPrefix) {
-		return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
-	}
+    public ObjSimEntryPoint withWhiteListPrefix(final String whiteListPrefix) {
+        return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
+    }
 
-	public ObjSimEntryPoint withCompatibleJREHome(final File compatibleJREHome) {
-		return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
-	}
+    public ObjSimEntryPoint withCompatibleJREHome(final File compatibleJREHome) {
+        return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, compatibleJREHome, this.childJVMArgs, this.inputCSVFile, this.failingTests);
+    }
 
-	public ObjSimEntryPoint withChildJVMArgs(final List<String> childJVMArgs) {
-		return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, childJVMArgs, this.inputCSVFile, this.failingTests);
-	}
+    public ObjSimEntryPoint withChildJVMArgs(final List<String> childJVMArgs) {
+        return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, childJVMArgs, this.inputCSVFile, this.failingTests);
+    }
 
-	public ObjSimEntryPoint withInputCSVFile(final File inputCSVFile) {
-		return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, inputCSVFile, this.failingTests);
-	}
+    public ObjSimEntryPoint withInputCSVFile(final File inputCSVFile) {
+        return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, inputCSVFile, this.failingTests);
+    }
 
-	public ObjSimEntryPoint withFailingTests(final Set<String> failingTests) {
-		return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, failingTests);
-	}
+    public ObjSimEntryPoint withFailingTests(final Set<String> failingTests) {
+        return new ObjSimEntryPoint(this.baseDirectory, this.classPath, this.byteArraySource, this.whiteListPrefix, this.compatibleJREHome, this.childJVMArgs, this.inputCSVFile, failingTests);
+    }
 
-	/**
-	 * Entry point for the entire system!
-	 * 
-	 * This method reads in the CSV files and parses them into the records LinkedList.
-	 * 
-	 *
-	 * @throws Exception Any failure
-	 */
-	public void run() throws Exception {
-		final ProcessArgs defaultProcessArgs = getDefaultProcessArgs();
-		final File outputDir = new File(this.baseDirectory, "objsim-output");
-		//        if (outputDir.isDirectory()) {
-		//            FileUtils.deleteDirectory(outputDir);
-		//        }
-		//        for (final InputRecord record : records) {
-		//            final List<String> coveringTests = Arrays.asList(record.coveringTests);
-		//            intersectionTests.retainAll(coveringTests);
+    /**
+     * Entry point for the entire system!
+     *
+     * @throws Exception Any failure
+     */
+    public void run() throws Exception {
 
-		// run covering tests on unpatched program
-		final Map<String, Wrapped[]> originalSnapshots = Profiler.getSnapshots(defaultProcessArgs,
-				this.whiteListPrefix);
-		System.out.println(String.format("WhiteListPrefix is %s", this.whiteListPrefix));
-		System.out.println(String.format("Collected %d snapshots.", originalSnapshots.size()));
-		originalSnapshots.forEach(new BiConsumer<String, Wrapped[]>() {
-			@Override
-			public void accept(String t, Wrapped[] u) {
-				System.out.println(String.format("%s: %s", t, u.toString()));
-			}
-		});
+        final File targetDirectory = new File(this.baseDirectory, "target");
+        final ProcessArgs defaultProcessArgs = getDefaultProcessArgs();
+        final Predicate<String> isFailingTest = getFailingTestsPredicate();
 
-		//            // run covering tests on patched program
-		//            final Map<String, Wrapped[]> patchedSnapshots = Profiler.getSnapshots(defaultProcessArgs,
-		//                    targetDirectory,
-		//                    record.classFile,
-		//                    this.whiteListPrefix,
-		//                    record.patchedMethod);
-		final File saveDir = new File(outputDir, LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm")));
-		if (saveDir.isDirectory()) {
-			FileUtils.deleteDirectory(saveDir);
-		}
-		System.out.println(String.format("SaveDir is %s", saveDir));
-		saveSnapshots(saveDir, originalSnapshots);
-		//            try (final PrintWriter printWriter = new PrintWriter(new File(saveDir, "raw-dist.csv"));
-		//                 final CSVPrinter csvPrinter = new CSVPrinter(printWriter, CSVFormat.DEFAULT)) {
-		//                final DistanceVisitor<Double> distanceListener = createDistanceListener(csvPrinter, record.patchId, distanceInfo);
-		//                visitDistances(coveringTests, isFailingTest, originalSnapshots, patchedSnapshots, distanceListener);
-		//            }
-		//        }
-		//        if (records.size() > 0) {
-		//            final List<Integer> distanceBasedRankedList = rank(intersectionTests, isFailingTest, distanceInfo);
-		//
-		//            final List<InputRecord> w = new LinkedList<>();
-		//
-		//            L: for (final InputRecord record : records) {
-		//                for (final int patchId : distanceBasedRankedList) {
-		//                    if (record.patchId == patchId) {
-		//                        continue L;
-		//                    }
-		//                }
-		//                w.add(record);
-		//            }
-		//
-		//            final double maxSusp = maxSusp(records, distanceBasedRankedList);
-		//
-		//            Collections.sort(w, new Comparator<InputRecord>() {
-		//                @Override
-		//                public int compare(final InputRecord r1, final InputRecord r2) {
-		//                    return Double.compare(r2.suspVal, r1.suspVal);
-		//                }
-		//            });
-		//            final Iterator<InputRecord> irIt = w.iterator();
-		//
-		//            try (final PrintWriter ordering = new PrintWriter(new File(outputDir, "ranking.txt"))) {
-		//                InputRecord record = irIt.hasNext() ? irIt.next() : null;
-		//                while (record != null && record.suspVal >= maxSusp) {
-		//                    ordering.println(record.patchId);
-		//                    record = irIt.hasNext() ? irIt.next() : null;
-		//                }
-		//                for (final int patchId : distanceBasedRankedList) {
-		//                    ordering.println(patchId);
-		//                }
-		//                while (record != null) {
-		//                    ordering.println(record.patchId);
-		//                    record = irIt.hasNext() ? irIt.next() : null;
-		//                }
-		//            }
-		//        }
-	}
+        final Map<Integer, List<Triple<String, Boolean, Double>>> distanceInfo =
+                new HashMap<>();
+        final Set<String> intersectionTests = new HashSet<>();
+        final File outputDir = new File(this.baseDirectory, "objsim-output");
+        if (outputDir.isDirectory()) {
+            FileUtils.deleteDirectory(outputDir);
+        }
 
-	/**
-	 * filters out irrelevant data
-	 */
-	private <T extends Number> Map<Integer, List<Pair<String, Double>>> filter(final Set<String> intersectionTests,
-			final Map<Integer, List<Triple<String, Boolean, T>>> infoMap) {
-		final  Map<Integer, List<Pair<String, Double>>> res = new HashMap<>();
-		for (final Map.Entry<Integer, List<Triple<String, Boolean, T>>> entry : infoMap.entrySet()) {
-			final int patchId = entry.getKey();
-			final List<Pair<String, Double>> list = new LinkedList<>();
-			for (final Triple<String, Boolean, T> triple : entry.getValue()) {
-				if (intersectionTests.contains(triple.getLeft())) {
-					list.add(new ImmutablePair<>(triple.getLeft(), triple.getRight().doubleValue()));
-				}
-			}
-			res.put(patchId, list);
-		}
-		return res;
-	}
+        // run covering tests on unpatched program
+        final Map<String, Wrapped[]> originalSnapshots = Profiler.getSnapshots(defaultProcessArgs,
+        		this.whiteListPrefix,
+        		failingTests);
+        final File saveDir = new File(outputDir, DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss").format(LocalDateTime.now()));
+        if (saveDir.isDirectory()) {
+        	FileUtils.deleteDirectory(saveDir);
+        }
+        logger.info(String.format("Saving snapshots. Collected %d snapshots.", originalSnapshots.size()));
+        saveSnapshots(saveDir, failingTests, isFailingTest, originalSnapshots);
+//        try (final PrintWriter printWriter = new PrintWriter(new File(saveDir, "raw-dist.csv"));
+//        		final CSVPrinter csvPrinter = new CSVPrinter(printWriter, CSVFormat.DEFAULT)) {
+//        	final DistanceVisitor<Double> distanceListener = createDistanceListener(csvPrinter, record.patchId, distanceInfo);
+//        	visitDistances(coveringTests, isFailingTest, originalSnapshots, patchedSnapshots, distanceListener);
+//        }
+//        if (records.size() > 0) {
+//            final List<Integer> distanceBasedRankedList = rank(intersectionTests, isFailingTest, distanceInfo);
+//
+//            final List<InputRecord> w = new LinkedList<>();
+//
+//            L: for (final InputRecord record : records) {
+//                for (final int patchId : distanceBasedRankedList) {
+//                    if (record.patchId == patchId) {
+//                        continue L;
+//                    }
+//                }
+//                w.add(record);
+//            }
+//
+//            final double maxSusp = maxSusp(records, distanceBasedRankedList);
+//
+//            Collections.sort(w, new Comparator<InputRecord>() {
+//                @Override
+//                public int compare(final InputRecord r1, final InputRecord r2) {
+//                    return Double.compare(r2.suspVal, r1.suspVal);
+//                }
+//            });
+//            final Iterator<InputRecord> irIt = w.iterator();
+//
+//            try (final PrintWriter ordering = new PrintWriter(new File(outputDir, "ranking.txt"))) {
+//                InputRecord record = irIt.hasNext() ? irIt.next() : null;
+//                while (record != null && record.suspVal >= maxSusp) {
+//                    ordering.println(record.patchId);
+//                    record = irIt.hasNext() ? irIt.next() : null;
+//                }
+//                for (final int patchId : distanceBasedRankedList) {
+//                    ordering.println(patchId);
+//                }
+//                while (record != null) {
+//                    ordering.println(record.patchId);
+//                    record = irIt.hasNext() ? irIt.next() : null;
+//                }
+//            }
+//        }
+    }
 
-	private double maxSusp(final Collection<InputRecord> records,
-			final Collection<Integer> patchIds) {
-		double max = Double.NEGATIVE_INFINITY;
-		L: for (final int patchId : patchIds) {
-			for (final InputRecord record : records) {
-				if (record.patchId == patchId) {
-					max = Math.max(max, record.suspVal);
-					continue L;
-				}
-			}
-		}
-		return max;
-	}
+    /**
+     * filters out irrelevant data
+     */
+    private <T extends Number> Map<Integer, List<Pair<String, Double>>> filter(final Set<String> intersectionTests,
+                                                                               final Map<Integer, List<Triple<String, Boolean, T>>> infoMap) {
+        final  Map<Integer, List<Pair<String, Double>>> res = new HashMap<>();
+        for (final Map.Entry<Integer, List<Triple<String, Boolean, T>>> entry : infoMap.entrySet()) {
+            final int patchId = entry.getKey();
+            final List<Pair<String, Double>> list = new LinkedList<>();
+            for (final Triple<String, Boolean, T> triple : entry.getValue()) {
+                if (intersectionTests.contains(triple.getLeft())) {
+                    list.add(new ImmutablePair<>(triple.getLeft(), triple.getRight().doubleValue()));
+                }
+            }
+            res.put(patchId, list);
+        }
+        return res;
+    }
 
-	private double averageDistance(final String testName,
-			final List<Pair<String, Double>> list) {
-		double sum = 0;
-		int count = 0;
-		for (final Pair<String, Double> pair : list) {
-			if (pair.getLeft().equals(testName)) {
-				sum += pair.getRight();
-				count++;
-			}
-		}
-		return sum / count;
-	}
+    private double maxSusp(final Collection<InputRecord> records,
+                           final Collection<Integer> patchIds) {
+        double max = Double.NEGATIVE_INFINITY;
+        L: for (final int patchId : patchIds) {
+            for (final InputRecord record : records) {
+                if (record.patchId == patchId) {
+                    max = Math.max(max, record.suspVal);
+                    continue L;
+                }
+            }
+        }
+        return max;
+    }
 
-	private static Comparator<Pair<Integer, Double>> ascendingOrderer() {
-		return new Comparator<Pair<Integer, Double>>() {
-			@Override
-			public int compare(Pair<Integer, Double> o1, Pair<Integer, Double> o2) {
-				return Double.compare(o1.getRight(), o2.getRight());
-			}
-		};
-	}
+    private double averageDistance(final String testName,
+                                   final List<Pair<String, Double>> list) {
+        double sum = 0;
+        int count = 0;
+        for (final Pair<String, Double> pair : list) {
+            if (pair.getLeft().equals(testName)) {
+                sum += pair.getRight();
+                count++;
+            }
+        }
+        return sum / count;
+    }
 
-	private static Comparator<Pair<Integer, Double>> descendingOrderer() {
-		return new Comparator<Pair<Integer, Double>>() {
-			@Override
-			public int compare(Pair<Integer, Double> o1, Pair<Integer, Double> o2) {
-				return Double.compare(o2.getRight(), o1.getRight());
-			}
-		};
-	}
+    private static Comparator<Pair<Integer, Double>> ascendingOrderer() {
+        return new Comparator<Pair<Integer, Double>>() {
+            @Override
+            public int compare(Pair<Integer, Double> o1, Pair<Integer, Double> o2) {
+                return Double.compare(o1.getRight(), o2.getRight());
+            }
+        };
+    }
 
-	private List<Pair<Integer, Double>> sortedVerticalStrip(final String testName,
-			final boolean isFailing,
-			final Map<Integer, List<Pair<String, Double>>> infoMap) {
-		final List<Pair<Integer, Double>> vector = new LinkedList<>();
-		for (final Map.Entry<Integer, List<Pair<String, Double>>> entry : infoMap.entrySet()) {
-			final int patchId = entry.getKey();
-			final double distance;
-			// calculating min/max based on test being failed/passed could also be possible
-			distance = averageDistance(testName, entry.getValue());
-			vector.add(new ImmutablePair<>(patchId, distance));
-		}
-		if (isFailing) {
-			Collections.sort(vector, ascendingOrderer());
-		} else {
-			Collections.sort(vector, descendingOrderer());
-		}
-		return vector;
-	}
+    private static Comparator<Pair<Integer, Double>> descendingOrderer() {
+        return new Comparator<Pair<Integer, Double>>() {
+            @Override
+            public int compare(Pair<Integer, Double> o1, Pair<Integer, Double> o2) {
+                return Double.compare(o2.getRight(), o1.getRight());
+            }
+        };
+    }
 
-	private <T extends Number> List<Integer> rank(final Set<String> intersectionTests,
-			final Predicate<String> isFailingTest,
-			final Map<Integer, List<Triple<String, Boolean, T>>> infoMap) {
-		final Map<Integer, Integer> scores = new HashMap<>();
-		final Map<Integer, List<Pair<String, Double>>> filteredInfoMap =
-				filter(intersectionTests, infoMap);
-		for (final String testName : intersectionTests) {
-			final boolean isFailing = isFailingTest.apply(testName);
-			final List<Pair<Integer, Double>> sortedVerticalStrip =
-					sortedVerticalStrip(testName, isFailing, filteredInfoMap);
-			double prevDist = Double.NaN;
-			int score = 0;
-			for (final Pair<Integer, Double> pair : sortedVerticalStrip) {
-				final int patchId = pair.getLeft();
-				if (prevDist != pair.getRight()) {
-					score++;
-					prevDist = pair.getRight();
-				}
-				Integer s = scores.get(patchId);
-				if (s == null) {
-					s = 0;
-				}
-				scores.put(patchId, s + score);
-			}
-		}
-		final List<Map.Entry<Integer, Integer>> temp = new ArrayList<>(scores.entrySet());
-		Collections.sort(temp, new Comparator<Map.Entry<Integer, Integer>>() {
-			@Override
-			public int compare(Map.Entry<Integer, Integer> o1,
-					Map.Entry<Integer, Integer> o2) {
-				return Integer.compare(o2.getValue(), o1.getValue());
-			}
-		});
-		final List<Integer> order = new LinkedList<>();
-		for (final Map.Entry<Integer, Integer> e : temp) {
-			order.add(e.getKey());
-		}
-		return order;
-	}
+    private List<Pair<Integer, Double>> sortedVerticalStrip(final String testName,
+                                                            final boolean isFailing,
+                                                            final Map<Integer, List<Pair<String, Double>>> infoMap) {
+        final List<Pair<Integer, Double>> vector = new LinkedList<>();
+        for (final Map.Entry<Integer, List<Pair<String, Double>>> entry : infoMap.entrySet()) {
+            final int patchId = entry.getKey();
+            final double distance;
+            // calculating min/max based on test being failed/passed could also be possible
+            distance = averageDistance(testName, entry.getValue());
+            vector.add(new ImmutablePair<>(patchId, distance));
+        }
+        if (isFailing) {
+            Collections.sort(vector, ascendingOrderer());
+        } else {
+            Collections.sort(vector, descendingOrderer());
+        }
+        return vector;
+    }
 
-	private static <T extends Number> DistanceVisitor<T> createDistanceListener(final CSVPrinter csvPrinter,
-			final int patchId,
-			final Map<Integer, List<Triple<String, Boolean, T>>> infoMap) {
-		return new DistanceVisitor<T>() {
-			@Override
-			public void visitDistance(String testName, boolean wasFailing, T distance) {
-				try {
-					csvPrinter.printRecord(testName, wasFailing, distance);
-					List<Triple<String, Boolean, T>> list = infoMap.get(patchId);
-					if (list == null) {
-						list = new LinkedList<>();
-						infoMap.put(patchId, list);
-					}
-					list.add(new ImmutableTriple<>(testName, wasFailing, distance));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		};
-	}
+    private <T extends Number> List<Integer> rank(final Set<String> intersectionTests,
+                                                  final Predicate<String> isFailingTest,
+                                                  final Map<Integer, List<Triple<String, Boolean, T>>> infoMap) {
+        final Map<Integer, Integer> scores = new HashMap<>();
+        final Map<Integer, List<Pair<String, Double>>> filteredInfoMap =
+                filter(intersectionTests, infoMap);
+        for (final String testName : intersectionTests) {
+            final boolean isFailing = isFailingTest.apply(testName);
+            final List<Pair<Integer, Double>> sortedVerticalStrip =
+                    sortedVerticalStrip(testName, isFailing, filteredInfoMap);
+            double prevDist = Double.NaN;
+            int score = 0;
+            for (final Pair<Integer, Double> pair : sortedVerticalStrip) {
+                final int patchId = pair.getLeft();
+                if (prevDist != pair.getRight()) {
+                    score++;
+                    prevDist = pair.getRight();
+                }
+                Integer s = scores.get(patchId);
+                if (s == null) {
+                    s = 0;
+                }
+                scores.put(patchId, s + score);
+            }
+        }
+        final List<Map.Entry<Integer, Integer>> temp = new ArrayList<>(scores.entrySet());
+        Collections.sort(temp, new Comparator<Map.Entry<Integer, Integer>>() {
+            @Override
+            public int compare(Map.Entry<Integer, Integer> o1,
+                               Map.Entry<Integer, Integer> o2) {
+                return Integer.compare(o2.getValue(), o1.getValue());
+            }
+        });
+        final List<Integer> order = new LinkedList<>();
+        for (final Map.Entry<Integer, Integer> e : temp) {
+            order.add(e.getKey());
+        }
+        return order;
+    }
 
-	private void visitDistances(final List<String> coveringTests,
-			final Predicate<String> isFailingTest,
-			final Map<String, Wrapped[]> originalSnapshots,
-			final Map<String, Wrapped[]> patchedSnapshots,
-			final DistanceVisitor<Double> distanceVisitor) {
-		for (final String testName : coveringTests) {
-			final Wrapped[] os = originalSnapshots.get(testName);
-			final Wrapped[] ps = patchedSnapshots.get(testName);
-			final boolean wasFailing = isFailingTest.apply(testName);
+    private static <T extends Number> DistanceVisitor<T> createDistanceListener(final CSVPrinter csvPrinter,
+                                                                                final int patchId,
+                                                                                final Map<Integer, List<Triple<String, Boolean, T>>> infoMap) {
+        return new DistanceVisitor<T>() {
+            @Override
+            public void visitDistance(String testName, boolean wasFailing, T distance) {
+                try {
+                    csvPrinter.printRecord(testName, wasFailing, distance);
+                    List<Triple<String, Boolean, T>> list = infoMap.get(patchId);
+                    if (list == null) {
+                        list = new LinkedList<>();
+                        infoMap.put(patchId, list);
+                    }
+                    list.add(new ImmutableTriple<>(testName, wasFailing, distance));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+    }
 
-			if (os.length != ps.length) {
-				break;
-			}
+    private void visitDistances(final List<String> coveringTests,
+                                final Predicate<String> isFailingTest,
+                                final Map<String, Wrapped[]> originalSnapshots,
+                                final Map<String, Wrapped[]> patchedSnapshots,
+                                final DistanceVisitor<Double> distanceVisitor) {
+        for (final String testName : coveringTests) {
+            final Wrapped[] os = originalSnapshots.get(testName);
+            final Wrapped[] ps = patchedSnapshots.get(testName);
+            final boolean wasFailing = isFailingTest.apply(testName);
 
-			for (int i = 0; i < os.length; i++) {
-				final double distance;
-				final Wrapped original = os[i];
-				final Wrapped patched = ps[i];
+            if (os.length != ps.length) {
+                break;
+            }
 
-				distance = calculateDistance(original, patched, wasFailing);
-				distanceVisitor.visitDistance(testName, wasFailing, distance);
-			}
-		}
-	}
+            for (int i = 0; i < os.length; i++) {
+                final double distance;
+                final Wrapped original = os[i];
+                final Wrapped patched = ps[i];
 
-	private static double calculateDistance(final Wrapped w1,
-			final Wrapped w2,
-			final boolean wasFailing) {
-		if (w1.getClass() != w2.getClass()) {
-			throw new IllegalArgumentException();
-		}
-		if (!(w1 instanceof WrappedObjectArray)) {
-			throw new IllegalArgumentException();
-		}
-		final Wrapped[] vals1 = ((WrappedObjectArray) w1).getValues();
-		final Wrapped[] vals2 = ((WrappedObjectArray) w2).getValues();
-		if (vals1.length != vals2.length) {
-			throw new IllegalArgumentException();
-		}
-		final int len = vals1.length;
-		double dist = 0;
-		for (int i = wasFailing ? 1 : 0; i < len; i++) {
-			dist += vals1[i].distance(vals2[i]);
-			if (Double.isInfinite(dist)) {
-				return Double.POSITIVE_INFINITY;
-			}
-		}
-		return dist;
-	}
+                distance = calculateDistance(original, patched, wasFailing);
+                distanceVisitor.visitDistance(testName, wasFailing, distance);
+            }
+        }
+    }
 
-	private void saveSnapshots(final File patchBaseDir,
-			final Collection<String> coveringTests,
-			final Predicate<String> isFailingTest,
-			final Map<String, Wrapped[]> originalSnapshots,
-			final Map<String, Wrapped[]> patchedSnapshots)
-					throws Exception {
-		if (!patchBaseDir.mkdirs()) {
-			throw new RuntimeException("Unable to create folder " + patchBaseDir.getAbsolutePath());
-		}
-		final File original = new File(patchBaseDir, "original.gz");
-		final File patched = new File(patchBaseDir, "patched.gz");
-		try (final OutputStream oriOS = new FileOutputStream(original);
-				final OutputStream oriBOS = new BufferedOutputStream(oriOS);
-				final OutputStream oriGZOS = new GZIPOutputStream(oriBOS);
-				final ObjectOutputStream oriOOS = new ObjectOutputStream(oriGZOS);
-				final OutputStream patchedOS = new FileOutputStream(patched);
-				final OutputStream patchedBOS = new BufferedOutputStream(patchedOS);
-				final OutputStream patchedGZOS = new GZIPOutputStream(patchedBOS);
-				final ObjectOutputStream patchedOOS = new ObjectOutputStream(patchedGZOS)) {
-			for (final String testName : coveringTests) {
-				final boolean wasFailing = isFailingTest.apply(testName);
-				oriOOS.writeObject(testName);
-				oriOOS.writeBoolean(wasFailing);
-				oriOOS.writeObject(originalSnapshots.get(testName));
-				patchedOOS.writeObject(testName);
-				patchedOOS.writeBoolean(wasFailing);
-				patchedOOS.writeObject(patchedSnapshots.get(testName));
-			}
-		}
-	}
+    private static double calculateDistance(final Wrapped w1,
+                                            final Wrapped w2,
+                                            final boolean wasFailing) {
+        if (w1.getClass() != w2.getClass()) {
+            throw new IllegalArgumentException();
+        }
+        if (!(w1 instanceof WrappedObjectArray)) {
+            throw new IllegalArgumentException();
+        }
+        final Wrapped[] vals1 = ((WrappedObjectArray) w1).getValues();
+        final Wrapped[] vals2 = ((WrappedObjectArray) w2).getValues();
+        if (vals1.length != vals2.length) {
+            throw new IllegalArgumentException();
+        }
+        final int len = vals1.length;
+        double dist = 0;
+        for (int i = wasFailing ? 1 : 0; i < len; i++) {
+            dist += vals1[i].distance(vals2[i]);
+            if (Double.isInfinite(dist)) {
+                return Double.POSITIVE_INFINITY;
+            }
+        }
+        return dist;
+    }
 
-	private void saveSnapshots(final File saveDir, final Map<String, Wrapped[]> originalSnapshots) throws Exception {
-		if (!saveDir.mkdirs()) {
-			throw new RuntimeException("Unable to create folder " + saveDir.getAbsolutePath());
-		}
-		final File original = new File(saveDir, "snapshots.gz");
-		try (final OutputStream oriOS = new FileOutputStream(original);
-				final OutputStream oriBOS = new BufferedOutputStream(oriOS);
-				final OutputStream oriGZOS = new GZIPOutputStream(oriBOS);
-				final ObjectOutputStream oriOOS = new ObjectOutputStream(oriGZOS)) {
-			for (final Entry<String, Wrapped[]> key : originalSnapshots.entrySet()) {
-				oriOOS.writeObject(key.getValue());
-			}
-		}
-	}
+    private void saveSnapshots(final File patchBaseDir,
+                               final Collection<String> coveringTests,
+                               final Predicate<String> isFailingTest,
+                               final Map<String, Wrapped[]> originalSnapshots)
+            throws Exception {
+        if (!patchBaseDir.mkdirs()) {
+            throw new RuntimeException("Unable to create folder " + patchBaseDir.getAbsolutePath());
+        }
+        final File original = new File(patchBaseDir, "original.gz");
+        System.out.println("Saved snapshots are in " + original.getAbsolutePath());
+        final File patched = new File(patchBaseDir, "patched.gz");
+        try (final OutputStream oriOS = new FileOutputStream(original);
+             final OutputStream oriBOS = new BufferedOutputStream(oriOS);
+             final OutputStream oriGZOS = new GZIPOutputStream(oriBOS);
+             final ObjectOutputStream oriOOS = new ObjectOutputStream(oriGZOS)) {
+            for (final String testName : coveringTests) {
+                final boolean wasFailing = isFailingTest.apply(testName);
+                oriOOS.writeObject(testName);
+                oriOOS.writeBoolean(wasFailing);
+                oriOOS.writeObject(originalSnapshots.get(testName));
+            }
+        }
+    }
 
-	private Predicate<String> getFailingTestsPredicate() {
-		return new Predicate<String>() {
-			@Override
-			public Boolean apply(String testName) {
-				return ObjSimEntryPoint.this.failingTests.contains(testName);
-			}
-		};
-	}
+    private Predicate<String> getFailingTestsPredicate() {
+        return new Predicate<String>() {
+            @Override
+            public Boolean apply(String testName) {
+                return ObjSimEntryPoint.this.failingTests.contains(testName);
+            }
+        };
+    }
 
-	private ProcessArgs getDefaultProcessArgs() {
-		final LaunchOptions defaultLaunchOptions = new LaunchOptions(getJavaAgent(),
-				getDefaultJavaExecutableLocator(),
-				this.childJVMArgs,
-				Collections.<String, String>emptyMap());
-		return ProcessArgs.withClassPath(this.classPath)
-				.andLaunchOptions(defaultLaunchOptions)
-				.andStderr(LoggerUtils.err())
-				.andStdout(LoggerUtils.out());
-	}
+    private ProcessArgs getDefaultProcessArgs() {
+        final LaunchOptions defaultLaunchOptions = new LaunchOptions(getJavaAgent(),
+                getDefaultJavaExecutableLocator(),
+                this.childJVMArgs,
+                Collections.<String, String>emptyMap());
+        return ProcessArgs.withClassPath(this.classPath)
+                .andLaunchOptions(defaultLaunchOptions)
+                .andStderr(LoggerUtils.err())
+                .andStdout(LoggerUtils.out());
+    }
 
-	private JavaExecutableLocator getDefaultJavaExecutableLocator() {
-		final File javaFile = FileUtils.getFile(this.compatibleJREHome, "bin", "java");
-		return new KnownLocationJavaExecutableLocator(javaFile.getAbsolutePath());
-	}
+    private JavaExecutableLocator getDefaultJavaExecutableLocator() {
+        final File javaFile = FileUtils.getFile(this.compatibleJREHome, "bin", "java");
+        return new KnownLocationJavaExecutableLocator(javaFile.getAbsolutePath());
+    }
 
-	private JavaAgent getJavaAgent() {
-		final String jarLocation = (new JarCreatingJarFinder(this.byteArraySource))
-				.getJarLocation()
-				.value();
-		return new KnownLocationJavaAgentFinder(jarLocation);
-	}
+    private JavaAgent getJavaAgent() {
+        final String jarLocation = (new JarCreatingJarFinder(this.byteArraySource))
+                .getJarLocation()
+                .value();
+        return new KnownLocationJavaAgentFinder(jarLocation);
+    }
 }

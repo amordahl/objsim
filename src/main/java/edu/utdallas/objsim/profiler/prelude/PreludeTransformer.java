@@ -55,11 +55,10 @@ public class PreludeTransformer implements ClassFileTransformer {
 
     public PreludeTransformer(final ClassByteArraySource byteArraySource,
                               final String whiteListPrefix,
-                              final String patchedMethodFullName,
                               final FieldsDom fieldsDom) {
         this.byteArraySource = byteArraySource;
         this.whiteListPrefix = whiteListPrefix.replace('.', '/');
-        this.patchedMethodFullName = patchedMethodFullName;
+        this.patchedMethodFullName = null;
         this.fieldsDom = fieldsDom;
         this.cache = new HashMap<>();
     }

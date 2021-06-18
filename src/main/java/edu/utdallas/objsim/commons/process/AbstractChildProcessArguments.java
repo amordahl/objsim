@@ -38,17 +38,11 @@ public abstract class AbstractChildProcessArguments implements Serializable {
 
     protected final Collection<String> coveringTestNames;
 
-    protected AbstractChildProcessArguments(final String patchedMethodName,
-                                            final Collection<String> coveringTestNames) {
-        Validate.isInstanceOf(Serializable.class, coveringTestNames);
-        this.patchedMethodName = patchedMethodName;
-        this.coveringTestNames = coveringTestNames;
-    }
-    
-    protected AbstractChildProcessArguments() {
-    	this.patchedMethodName = null;
-    	this.coveringTestNames = null;
-}
+	protected AbstractChildProcessArguments(final Collection<String> coveringTestNames) {
+		Validate.isInstanceOf(Serializable.class, coveringTestNames);
+		this.patchedMethodName = null;
+		this.coveringTestNames = coveringTestNames;
+	}
 
     public String getPatchedMethodName() {
         return this.patchedMethodName;

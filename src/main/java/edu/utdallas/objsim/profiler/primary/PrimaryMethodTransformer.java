@@ -23,6 +23,8 @@ package edu.utdallas.objsim.profiler.primary;
 import edu.utdallas.objsim.commons.asm.FinallyBlockAdviceAdapter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static edu.utdallas.objsim.commons.asm.MethodBodyUtils.pushInteger;
 import static org.objectweb.asm.Opcodes.AALOAD;
@@ -54,6 +56,8 @@ import static org.objectweb.asm.Opcodes.CHECKCAST;
 class PrimaryMethodTransformer extends FinallyBlockAdviceAdapter {
     private static final Type OBJECT_TYPE = Type.getObjectType("java/lang/Object");
 
+    private static Logger logger = LoggerFactory.getLogger(PrimaryMethodTransformer.class);
+    
     private static final String SNAPSHOT_TRACKER;
 
     static {
@@ -118,6 +122,7 @@ class PrimaryMethodTransformer extends FinallyBlockAdviceAdapter {
             paramIndex += type.getSize();
         }
         super.visitInsn(DUP);
+        logger.info("Adding call to submit system state.");
         super.visitMethodInsn(INVOKESTATIC, SNAPSHOT_TRACKER,
                 "submitSystemState", "([Ljava/lang/Object;)V",
                 false);

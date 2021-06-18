@@ -137,6 +137,11 @@
             <artifactId>maven-plugin-annotations</artifactId>
             <version>3.6.0</version>
         </dependency>
+        <dependency>
+        	<groupId>org.slf4j</groupId>
+        	<artifactId>slf4j-api</artifactId>
+        	<version>1.7.9</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -243,6 +248,25 @@
         						<pluginExecution>
         							<pluginExecutionFilter>
         								<groupId>
+        									org.apache.maven.plugins
+        								</groupId>
+        								<artifactId>
+        									maven-plugin-plugin
+        								</artifactId>
+        								<versionRange>
+        									[3.5,)
+        								</versionRange>
+        								<goals>
+        									<goal>descriptor</goal>
+        								</goals>
+        							</pluginExecutionFilter>
+        							<action>
+        								<execute></execute>
+        							</action>
+        						</pluginExecution>
+        						<pluginExecution>
+        							<pluginExecutionFilter>
+        								<groupId>
         									org.codehaus.mojo
         								</groupId>
         								<artifactId>
@@ -255,25 +279,6 @@
         									<goal>
         										update-file-header
         									</goal>
-        								</goals>
-        							</pluginExecutionFilter>
-        							<action>
-        								<execute></execute>
-        							</action>
-        						</pluginExecution>
-        						<pluginExecution>
-        							<pluginExecutionFilter>
-        								<groupId>
-        									org.apache.maven.plugins
-        								</groupId>
-        								<artifactId>
-        									maven-plugin-plugin
-        								</artifactId>
-        								<versionRange>
-        									[3.5,)
-        								</versionRange>
-        								<goals>
-        									<goal>descriptor</goal>
         								</goals>
         							</pluginExecutionFilter>
         							<action>
