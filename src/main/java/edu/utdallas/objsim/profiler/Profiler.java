@@ -48,6 +48,8 @@ import org.pitest.testapi.TestUnit;
 import org.pitest.util.ExitCode;
 import org.pitest.util.IsolationUtils;
 import org.pitest.util.SafeDataInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,6 +61,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.runner.Description.createTestDescription;
 
@@ -74,7 +77,7 @@ import static edu.utdallas.objsim.commons.misc.NameUtils.decomposeMethodName;
  */
 public final class Profiler {
     private static final int CACHE_SIZE = 500;
-
+    private static Logger logger = LoggerFactory.getLogger(Profiler.class);
     private Profiler() {
 
     }
@@ -98,17 +101,20 @@ public final class Profiler {
             if (isPreludeStage) {
                 final String whiteListPrefix = ((PreludeProfilerArguments) arguments).getWhiteListPrefix();
                 fieldsDom = new FieldsDom();
-                transformer = new PreludeTransformer(byteArraySource, whiteListPrefix, arguments.getPatchedMethodName(), fieldsDom);
+                System.out.println("Creating a new prelude transformer.");
+                transformer = new PreludeTransformer(byteArraySource, whiteListPrefix, fieldsDom);
             } else {
                 fieldsDom = ((PrimaryProfilerArguments) arguments).getFieldsDom();
                 final Collection<Integer> accessedFields = ((PrimaryProfilerArguments) arguments).getAccessedFields();
                 SnapshotTracker.setAccessedFields(fieldsDom, accessedFields);
-                transformer = new PrimaryTransformer(arguments.getPatchedMethodName(), byteArraySource);
+                System.out.println("Creating a new primary transformer.");
+                transformer = new PrimaryTransformer(byteArraySource);
             }
             HotSwapAgent.addTransformer(transformer);
-
+            System.out.println("Transformation added.");
             final ProfilerReporter reporter = new ProfilerReporter(socket.getOutputStream());
 
+            System.out.println(String.format("Covering test names: %s", arguments.getCoveringTestNames().toString()));
             final JUnitRunner runner = new JUnitRunner(testNameToTestUnit(arguments.getCoveringTestNames()));
             runner.setTestUnits(decorateTestCases(runner.getTestUnits(), reporter));
             runner.run();
@@ -132,6 +138,7 @@ public final class Profiler {
             res.add(new TestUnit() {
                 @Override
                 public void execute(ResultCollector resultCollector) {
+                	System.out.println(String.format("Executing test %s", testUnit.toString()));
                     testUnit.execute(resultCollector);
                     final String testName =
                             NameUtils.sanitizeExtendedTestName(testUnit.getDescription().getName());
@@ -180,32 +187,13 @@ public final class Profiler {
 
     private static Pair<FieldsDom, ? extends List<Integer>> runPrelude(final ProcessArgs defaultProcessArgs,
                                                                        final String whiteListPrefix,
-                                                                       final String patchedMethodFullName,
                                                                        final Collection<String> coveringTestNames)
             throws IOException, InterruptedException {
-        final PreludeProfilerArguments arguments = new PreludeProfilerArguments(whiteListPrefix, patchedMethodFullName, coveringTestNames);
+        final PreludeProfilerArguments arguments = new PreludeProfilerArguments(whiteListPrefix, coveringTestNames);
         final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
         process.start();
         process.waitToDie();
         return new ImmutablePair<>(process.getFieldsDom(), process.getFieldAccesses());
-    }
-
-    public static Map<String, Wrapped[]> getSnapshots(final ProcessArgs defaultProcessArgs,
-                                                      final File targetDirectory,
-                                                      final File patchedClassFile,
-                                                      final String whiteListPrefix,
-                                                      final String patchedMethodFullName,
-                                                      final Collection<String> coveringTestNames)
-            throws IOException, InterruptedException {
-        Validate.isTrue(patchedClassFile.isFile());
-        Validate.isTrue(targetDirectory.isDirectory());
-        final Backup backup = backup(new File(targetDirectory, "classes"), patchedClassFile);
-        final ProfilerProcess process = runProcess(defaultProcessArgs,
-                whiteListPrefix,
-                patchedMethodFullName,
-                coveringTestNames);
-        backup.restore();
-        return process.getSnapshots();
     }
 
     public static Map<String, Wrapped[]> getSnapshots(final ProcessArgs defaultProcessArgs,
@@ -215,21 +203,27 @@ public final class Profiler {
             throws IOException, InterruptedException {
         return runProcess(defaultProcessArgs,
                 whiteListPrefix,
-                patchedMethodFullName,
                 coveringTestNames).getSnapshots();
     }
 
-    private static ProfilerProcess runProcess(final ProcessArgs defaultProcessArgs,
+    public static Map<String, Wrapped[]> getSnapshots(ProcessArgs defaultProcessArgs, String whiteListPrefix,
+			Set<String> failingTests) throws IOException, InterruptedException {
+        return runProcess(defaultProcessArgs,
+                whiteListPrefix,
+                failingTests).getSnapshots();
+	}
+
+	private static ProfilerProcess runProcess(final ProcessArgs defaultProcessArgs,
                                               final String whiteListPrefix,
-                                              final String patchedMethodFullName,
                                               final Collection<String> coveringTestNames)
             throws IOException, InterruptedException {
         final Pair<FieldsDom, ? extends List<Integer>> preludeResult = runPrelude(defaultProcessArgs,
-                whiteListPrefix, patchedMethodFullName, coveringTestNames);
+                whiteListPrefix, coveringTestNames);
         final FieldsDom fieldsDom = preludeResult.getLeft();
+        System.out.println(String.format("fieldsDom is %s", fieldsDom.toString()));
         final List<Integer> accessedFields = preludeResult.getRight();
-        final AbstractChildProcessArguments arguments = new PrimaryProfilerArguments(patchedMethodFullName,
-                coveringTestNames, fieldsDom, accessedFields);
+        System.out.println(String.format("accessedFiels is %s", accessedFields.toString()));
+        final AbstractChildProcessArguments arguments = new PrimaryProfilerArguments(coveringTestNames, fieldsDom, accessedFields);
         final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
         process.start();
         process.waitToDie();

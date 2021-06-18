@@ -44,6 +44,8 @@ import org.pitest.process.JavaExecutableLocator;
 import org.pitest.process.KnownLocationJavaExecutableLocator;
 import org.pitest.process.LaunchOptions;
 import org.pitest.process.ProcessArgs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -54,6 +56,8 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -89,6 +93,8 @@ public class ObjSimEntryPoint {
     private final File inputCSVFile;
 
     private final Set<String> failingTests;
+    
+    private static Logger logger = LoggerFactory.getLogger(ObjSimEntryPoint.class);
 
     private ObjSimEntryPoint(final File baseDirectory,
                              final ClassPath classPath,
@@ -150,13 +156,7 @@ public class ObjSimEntryPoint {
      * @throws Exception Any failure
      */
     public void run() throws Exception {
-        final List<InputRecord> records = new LinkedList<>();
-        try (final Reader fr = new FileReader(this.inputCSVFile);
-             final CSVParser parser = CSVParser.parse(fr, CSVFormat.DEFAULT)) {
-            for (final CSVRecord record : parser.getRecords()) {
-                records.add(InputRecord.fromCSVRecord(record));
-            }
-        }
+
         final File targetDirectory = new File(this.baseDirectory, "target");
         final ProcessArgs defaultProcessArgs = getDefaultProcessArgs();
         final Predicate<String> isFailingTest = getFailingTestsPredicate();
@@ -164,79 +164,65 @@ public class ObjSimEntryPoint {
         final Map<Integer, List<Triple<String, Boolean, Double>>> distanceInfo =
                 new HashMap<>();
         final Set<String> intersectionTests = new HashSet<>();
-        for (final InputRecord record : records) {
-            Collections.addAll(intersectionTests, record.coveringTests);
-        }
         final File outputDir = new File(this.baseDirectory, "objsim-output");
         if (outputDir.isDirectory()) {
             FileUtils.deleteDirectory(outputDir);
         }
-        for (final InputRecord record : records) {
-            final List<String> coveringTests = Arrays.asList(record.coveringTests);
-            intersectionTests.retainAll(coveringTests);
 
-            // run covering tests on unpatched program
-            final Map<String, Wrapped[]> originalSnapshots = Profiler.getSnapshots(defaultProcessArgs,
-                    this.whiteListPrefix,
-                    record.patchedMethod,
-                    coveringTests);
-            // run covering tests on patched program
-            final Map<String, Wrapped[]> patchedSnapshots = Profiler.getSnapshots(defaultProcessArgs,
-                    targetDirectory,
-                    record.classFile,
-                    this.whiteListPrefix,
-                    record.patchedMethod,
-                    coveringTests);
-            final File patchBaseDir = new File(outputDir, "patch-" + record.patchId);
-            if (patchBaseDir.isDirectory()) {
-                FileUtils.deleteDirectory(patchBaseDir);
-            }
-            saveSnapshots(patchBaseDir, coveringTests, isFailingTest, originalSnapshots, patchedSnapshots);
-            try (final PrintWriter printWriter = new PrintWriter(new File(patchBaseDir, "raw-dist.csv"));
-                 final CSVPrinter csvPrinter = new CSVPrinter(printWriter, CSVFormat.DEFAULT)) {
-                final DistanceVisitor<Double> distanceListener = createDistanceListener(csvPrinter, record.patchId, distanceInfo);
-                visitDistances(coveringTests, isFailingTest, originalSnapshots, patchedSnapshots, distanceListener);
-            }
+        // run covering tests on unpatched program
+        final Map<String, Wrapped[]> originalSnapshots = Profiler.getSnapshots(defaultProcessArgs,
+        		this.whiteListPrefix,
+        		failingTests);
+        final File saveDir = new File(outputDir, DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss").format(LocalDateTime.now()));
+        if (saveDir.isDirectory()) {
+        	FileUtils.deleteDirectory(saveDir);
         }
-        if (records.size() > 0) {
-            final List<Integer> distanceBasedRankedList = rank(intersectionTests, isFailingTest, distanceInfo);
-
-            final List<InputRecord> w = new LinkedList<>();
-
-            L: for (final InputRecord record : records) {
-                for (final int patchId : distanceBasedRankedList) {
-                    if (record.patchId == patchId) {
-                        continue L;
-                    }
-                }
-                w.add(record);
-            }
-
-            final double maxSusp = maxSusp(records, distanceBasedRankedList);
-
-            Collections.sort(w, new Comparator<InputRecord>() {
-                @Override
-                public int compare(final InputRecord r1, final InputRecord r2) {
-                    return Double.compare(r2.suspVal, r1.suspVal);
-                }
-            });
-            final Iterator<InputRecord> irIt = w.iterator();
-
-            try (final PrintWriter ordering = new PrintWriter(new File(outputDir, "ranking.txt"))) {
-                InputRecord record = irIt.hasNext() ? irIt.next() : null;
-                while (record != null && record.suspVal >= maxSusp) {
-                    ordering.println(record.patchId);
-                    record = irIt.hasNext() ? irIt.next() : null;
-                }
-                for (final int patchId : distanceBasedRankedList) {
-                    ordering.println(patchId);
-                }
-                while (record != null) {
-                    ordering.println(record.patchId);
-                    record = irIt.hasNext() ? irIt.next() : null;
-                }
-            }
-        }
+        logger.info(String.format("Saving snapshots. Collected %d snapshots.", originalSnapshots.size()));
+        saveSnapshots(saveDir, failingTests, isFailingTest, originalSnapshots);
+//        try (final PrintWriter printWriter = new PrintWriter(new File(saveDir, "raw-dist.csv"));
+//        		final CSVPrinter csvPrinter = new CSVPrinter(printWriter, CSVFormat.DEFAULT)) {
+//        	final DistanceVisitor<Double> distanceListener = createDistanceListener(csvPrinter, record.patchId, distanceInfo);
+//        	visitDistances(coveringTests, isFailingTest, originalSnapshots, patchedSnapshots, distanceListener);
+//        }
+//        if (records.size() > 0) {
+//            final List<Integer> distanceBasedRankedList = rank(intersectionTests, isFailingTest, distanceInfo);
+//
+//            final List<InputRecord> w = new LinkedList<>();
+//
+//            L: for (final InputRecord record : records) {
+//                for (final int patchId : distanceBasedRankedList) {
+//                    if (record.patchId == patchId) {
+//                        continue L;
+//                    }
+//                }
+//                w.add(record);
+//            }
+//
+//            final double maxSusp = maxSusp(records, distanceBasedRankedList);
+//
+//            Collections.sort(w, new Comparator<InputRecord>() {
+//                @Override
+//                public int compare(final InputRecord r1, final InputRecord r2) {
+//                    return Double.compare(r2.suspVal, r1.suspVal);
+//                }
+//            });
+//            final Iterator<InputRecord> irIt = w.iterator();
+//
+//            try (final PrintWriter ordering = new PrintWriter(new File(outputDir, "ranking.txt"))) {
+//                InputRecord record = irIt.hasNext() ? irIt.next() : null;
+//                while (record != null && record.suspVal >= maxSusp) {
+//                    ordering.println(record.patchId);
+//                    record = irIt.hasNext() ? irIt.next() : null;
+//                }
+//                for (final int patchId : distanceBasedRankedList) {
+//                    ordering.println(patchId);
+//                }
+//                while (record != null) {
+//                    ordering.println(record.patchId);
+//                    record = irIt.hasNext() ? irIt.next() : null;
+//                }
+//            }
+//        }
     }
 
     /**
@@ -436,30 +422,23 @@ public class ObjSimEntryPoint {
     private void saveSnapshots(final File patchBaseDir,
                                final Collection<String> coveringTests,
                                final Predicate<String> isFailingTest,
-                               final Map<String, Wrapped[]> originalSnapshots,
-                               final Map<String, Wrapped[]> patchedSnapshots)
+                               final Map<String, Wrapped[]> originalSnapshots)
             throws Exception {
         if (!patchBaseDir.mkdirs()) {
             throw new RuntimeException("Unable to create folder " + patchBaseDir.getAbsolutePath());
         }
         final File original = new File(patchBaseDir, "original.gz");
+        System.out.println("Saved snapshots are in " + original.getAbsolutePath());
         final File patched = new File(patchBaseDir, "patched.gz");
         try (final OutputStream oriOS = new FileOutputStream(original);
              final OutputStream oriBOS = new BufferedOutputStream(oriOS);
              final OutputStream oriGZOS = new GZIPOutputStream(oriBOS);
-             final ObjectOutputStream oriOOS = new ObjectOutputStream(oriGZOS);
-             final OutputStream patchedOS = new FileOutputStream(patched);
-             final OutputStream patchedBOS = new BufferedOutputStream(patchedOS);
-             final OutputStream patchedGZOS = new GZIPOutputStream(patchedBOS);
-             final ObjectOutputStream patchedOOS = new ObjectOutputStream(patchedGZOS)) {
+             final ObjectOutputStream oriOOS = new ObjectOutputStream(oriGZOS)) {
             for (final String testName : coveringTests) {
                 final boolean wasFailing = isFailingTest.apply(testName);
                 oriOOS.writeObject(testName);
                 oriOOS.writeBoolean(wasFailing);
                 oriOOS.writeObject(originalSnapshots.get(testName));
-                patchedOOS.writeObject(testName);
-                patchedOOS.writeBoolean(wasFailing);
-                patchedOOS.writeObject(patchedSnapshots.get(testName));
             }
         }
     }

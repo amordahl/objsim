@@ -55,11 +55,10 @@ public class PreludeTransformer implements ClassFileTransformer {
 
     public PreludeTransformer(final ClassByteArraySource byteArraySource,
                               final String whiteListPrefix,
-                              final String patchedMethodFullName,
                               final FieldsDom fieldsDom) {
         this.byteArraySource = byteArraySource;
         this.whiteListPrefix = whiteListPrefix.replace('.', '/');
-        this.patchedMethodFullName = patchedMethodFullName;
+        this.patchedMethodFullName = null;
         this.fieldsDom = fieldsDom;
         this.cache = new HashMap<>();
     }
@@ -76,7 +75,7 @@ public class PreludeTransformer implements ClassFileTransformer {
         final ClassReader classReader = new ClassReader(classfileBuffer);
         final ClassWriter classWriter = new ComputeClassWriter(this.byteArraySource, this.cache, pickFlags(classfileBuffer));
         final ClassVisitor classVisitor = new PreludeTransformerClassVisitor(classWriter,
-                classfileBuffer, this.patchedMethodFullName, this.fieldsDom);
+                classfileBuffer, this.fieldsDom);
         classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
         return classWriter.toByteArray();
     }

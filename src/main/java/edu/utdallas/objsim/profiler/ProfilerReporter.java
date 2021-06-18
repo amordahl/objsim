@@ -49,6 +49,7 @@ class ProfilerReporter {
     }
 
     public synchronized void reportSnapshots(final String testName, final Wrapped[] snapshots) {
+    	System.out.println("Reporting a snapshot to the SafeDataOutputStream.");
         this.dos.writeByte(ControlId.REPORT_SNAPSHOTS);
         this.dos.writeString(testName);
         this.dos.write(snapshots);
