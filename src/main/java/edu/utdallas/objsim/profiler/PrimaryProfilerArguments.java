@@ -26,6 +26,7 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Arguments for "primary" profiler process which is intended to record system state
@@ -50,7 +51,13 @@ class PrimaryProfilerArguments extends AbstractChildProcessArguments {
         this.accessedFields = accessedFields;
     }
 
-    public FieldsDom getFieldsDom() {
+    public PrimaryProfilerArguments(FieldsDom fieldsDom, List<Integer> accessedFields) {
+		super();
+		Validate.isInstanceOf(Serializable.class, accessedFields);
+		this.fieldsDom = fieldsDom;
+		this.accessedFields = accessedFields;	}
+
+	public FieldsDom getFieldsDom() {
         return this.fieldsDom;
     }
 

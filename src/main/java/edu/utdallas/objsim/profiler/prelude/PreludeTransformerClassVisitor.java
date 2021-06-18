@@ -23,6 +23,7 @@ package edu.utdallas.objsim.profiler.prelude;
 import edu.utdallas.objsim.commons.asm.MethodUtils;
 import edu.utdallas.objsim.commons.relational.FieldsDom;
 import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 
 import static edu.utdallas.objsim.commons.misc.NameUtils.composeMethodFullName;
@@ -50,7 +51,14 @@ public class PreludeTransformerClassVisitor extends ClassVisitor {
         this.fieldsDom = fieldsDom;
     }
 
-    @Override
+    public PreludeTransformerClassVisitor(ClassVisitor classVisitor, byte[] classFileBytes, FieldsDom fieldsDom) {
+        super(ASM7, classVisitor);
+        this.classFileBytes = classFileBytes;
+        this.fieldsDom = fieldsDom;
+        this.patchedMethodFullName = null;
+    }
+
+	@Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         this.owner = name;
         super.visit(version, access, name, signature, superName, interfaces);

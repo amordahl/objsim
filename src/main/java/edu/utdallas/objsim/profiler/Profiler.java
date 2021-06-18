@@ -1,5 +1,7 @@
 package edu.utdallas.objsim.profiler;
 
+import edu.emory.mathcs.backport.java.util.Arrays;
+
 /*
  * #%L
  * objsim
@@ -57,6 +59,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -196,6 +199,15 @@ public final class Profiler {
         return new ImmutablePair<>(process.getFieldsDom(), process.getFieldAccesses());
     }
 
+	private static Pair<FieldsDom, ? extends List<Integer>> runPrelude(final ProcessArgs defaultProcessArgs,
+			final String whiteListPrefix) throws IOException, InterruptedException {
+		final PreludeProfilerArguments arguments = new PreludeProfilerArguments(whiteListPrefix);
+		final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
+		process.start();
+		process.waitToDie();
+		return new ImmutablePair<>(process.getFieldsDom(), process.getFieldAccesses());
+	}
+
     public static Map<String, Wrapped[]> getSnapshots(final ProcessArgs defaultProcessArgs,
                                                       final String whiteListPrefix,
                                                       final String patchedMethodFullName,
@@ -230,6 +242,17 @@ public final class Profiler {
         return process;
     }
 
+	private static ProfilerProcess runProcess(final ProcessArgs defaultProcessArgs, final String whiteListPrefix)
+			throws IOException, InterruptedException {
+		final Pair<FieldsDom, ? extends List<Integer>> preludeResult = runPrelude(defaultProcessArgs, whiteListPrefix);
+		final FieldsDom fieldsDom = preludeResult.getLeft();
+		final List<Integer> accessedFields = preludeResult.getRight();
+		final AbstractChildProcessArguments arguments = new PrimaryProfilerArguments(fieldsDom, accessedFields);
+		final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
+		process.start();
+		process.waitToDie();
+		return process;
+	}
     private static Backup backup(final File baseDirectory,
                                  final File patchedClassFile) throws IOException {
         final String classFullName = NameUtils.getClassName(patchedClassFile);

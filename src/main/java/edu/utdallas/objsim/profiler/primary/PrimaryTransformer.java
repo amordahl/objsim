@@ -33,7 +33,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.nio.file.*;
 import static edu.utdallas.objsim.commons.misc.NameUtils.decomposeMethodName;
 import static org.pitest.bytecode.FrameOptions.pickFlags;
 
@@ -54,6 +54,13 @@ public class PrimaryTransformer implements ClassFileTransformer {
         this.byteArraySource = byteArraySource;
     }
 
+	public PrimaryTransformer(final ClassByteArraySource byteArraySource) {
+		this.cache = new HashMap<>();
+		this.byteArraySource = byteArraySource;
+		this.patchedClassName = null;
+		this.patchedMethodFullName = null;
+	}
+	
     @Override
     public byte[] transform(ClassLoader loader,
                             String className,
@@ -69,6 +76,20 @@ public class PrimaryTransformer implements ClassFileTransformer {
         final ClassWriter classWriter = new ComputeClassWriter(this.byteArraySource, this.cache, pickFlags(classfileBuffer));
         final ClassVisitor classVisitor = new PrimaryTransformerClassVisitor(classfileBuffer,classWriter);
         classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
+        
+        // This is to write the byte array to a file.
+        try {
+        	Path outputFolder = Paths.get("/Users/austin/Desktop/outputs");
+        	if (!Files.exists(outputFolder, new LinkOption[] {})) {
+        		Files.createDirectory(outputFolder);
+        	}
+        	Path outputFile = outputFolder.resolve(className.replace("/", "_") + ".class");
+        	System.err.println("Outputfile is " + outputFile.toString());
+        	Files.write(outputFile, classWriter.toByteArray());
+        } catch (Exception ex) {
+        	System.err.println(ex.getMessage());
+        	ex.printStackTrace();
+        }
         return classWriter.toByteArray();
     }
 }

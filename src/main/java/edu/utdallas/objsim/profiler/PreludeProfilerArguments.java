@@ -26,23 +26,27 @@ import java.util.Collection;
 
 /**
  * Arguments passed to the "prelude" profiler process which is responsible for
- * recording field accesses of the program.
- * !Internal use only!
+ * recording field accesses of the program. !Internal use only!
  *
  * @author Ali Ghanbari (ali.ghanbari@utdallas.edu)
  */
 class PreludeProfilerArguments extends AbstractChildProcessArguments {
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    private final String whiteListPrefix;
+	private final String whiteListPrefix;
 
-    PreludeProfilerArguments(final String whiteListPrefix,
-                             final Collection<String> coveringTestNames) {
-        super(coveringTestNames);
-        this.whiteListPrefix = whiteListPrefix;
-    }
+      PreludeProfilerArguments(final String whiteListPrefix,
+                               final Collection<String> coveringTestNames) {
+          super(coveringTestNames);
+          this.whiteListPrefix = whiteListPrefix;
+      }
+  
+	PreludeProfilerArguments(final String whiteListPrefix) {
+		super();
+		this.whiteListPrefix = whiteListPrefix;
+	}
 
-    public String getWhiteListPrefix() {
-        return this.whiteListPrefix;
-    }
+	public String getWhiteListPrefix() {
+		return this.whiteListPrefix;
+	}
 }
