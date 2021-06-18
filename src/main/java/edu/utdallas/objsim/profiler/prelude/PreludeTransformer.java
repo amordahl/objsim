@@ -63,6 +63,15 @@ public class PreludeTransformer implements ClassFileTransformer {
         this.fieldsDom = fieldsDom;
         this.cache = new HashMap<>();
     }
+    
+	public PreludeTransformer(final ClassByteArraySource byteArraySource, final String whiteListPrefix,
+			final FieldsDom fieldsDom) {
+		this.byteArraySource = byteArraySource;
+		this.whiteListPrefix = whiteListPrefix.replace('.', '/');
+		this.patchedMethodFullName = null;
+		this.fieldsDom = fieldsDom;
+		this.cache = new HashMap<>();
+	}
 
     @Override
     public byte[] transform(ClassLoader loader,
@@ -73,10 +82,11 @@ public class PreludeTransformer implements ClassFileTransformer {
         if (!className.startsWith(this.whiteListPrefix)) {
             return null; // no transformation
         }
+        System.out.println("ClassName is " + className);
         final ClassReader classReader = new ClassReader(classfileBuffer);
         final ClassWriter classWriter = new ComputeClassWriter(this.byteArraySource, this.cache, pickFlags(classfileBuffer));
         final ClassVisitor classVisitor = new PreludeTransformerClassVisitor(classWriter,
-                classfileBuffer, this.patchedMethodFullName, this.fieldsDom);
+                classfileBuffer, this.fieldsDom);
         classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
         return classWriter.toByteArray();
     }

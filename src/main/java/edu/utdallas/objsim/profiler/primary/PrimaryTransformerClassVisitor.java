@@ -48,9 +48,15 @@ class PrimaryTransformerClassVisitor extends ClassVisitor {
                                           final ClassVisitor classVisitor,
                                           final String patchedMethodFullName) {
         super(ASM7, classVisitor);
-        this.classFileByteArray = classFileByteArray;
-        this.patchedMethodFullName = patchedMethodFullName;
-    }
+		this.classFileByteArray = classFileByteArray;
+		this.patchedMethodFullName = patchedMethodFullName;
+	}
+
+	public PrimaryTransformerClassVisitor(final byte[] classFileByteArray, final ClassVisitor classVisitor) {
+		super(ASM7, classVisitor);
+		this.classFileByteArray = classFileByteArray;
+		this.patchedMethodFullName = null;
+	}
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
@@ -68,12 +74,10 @@ class PrimaryTransformerClassVisitor extends ClassVisitor {
 //            System.out.printf("INFO: %d INVOKESPECIAL instruction(s) will be skipped.%n", skip);
         }
         final String methodFullName = composeMethodFullName(this.owner, name, descriptor);
-        if (this.patchedMethodFullName.equals(methodFullName)) {
-            final boolean isStatic = Modifier.isStatic(access);
-            final Type[] paramTypes = Type.getArgumentTypes(descriptor);
-            final Type retType = Type.getReturnType(descriptor);
-            return new PrimaryMethodTransformer(defMethodVisitor, isStatic, paramTypes, retType, skip);
-        }
-        return defMethodVisitor;
+        final boolean isStatic = Modifier.isStatic(access);
+        final Type[] paramTypes = Type.getArgumentTypes(descriptor);
+        final Type retType = Type.getReturnType(descriptor);
+        return new PrimaryMethodTransformer(defMethodVisitor, isStatic, paramTypes, retType, skip);
+        //return defMethodVisitor;
     }
 }

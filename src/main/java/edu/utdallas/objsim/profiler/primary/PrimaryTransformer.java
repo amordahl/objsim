@@ -62,19 +62,27 @@ public class PrimaryTransformer implements ClassFileTransformer {
         this.byteArraySource = byteArraySource;
     }
 
+	public PrimaryTransformer(final ClassByteArraySource byteArraySource) {
+		this.cache = new HashMap<>();
+		this.byteArraySource = byteArraySource;
+		this.patchedClassName = null;
+		this.patchedMethodFullName = null;
+	}
+	
     @Override
     public byte[] transform(ClassLoader loader,
                             String className,
                             Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain,
                             byte[] classfileBuffer) {
-        if (!this.patchedClassName.equals(className)) {
-            return null; // no transformation
-        }
+    	if (className.contains("utdallas")) {
+    		System.err.println("Skipping class " + className);
+    		return null;
+    	}
+    	System.err.println("ClassName is " + className);
         final ClassReader classReader = new ClassReader(classfileBuffer);
         final ClassWriter classWriter = new ComputeClassWriter(this.byteArraySource, this.cache, pickFlags(classfileBuffer));
-        final ClassVisitor classVisitor = new PrimaryTransformerClassVisitor(classfileBuffer,
-                classWriter, this.patchedMethodFullName);
+        final ClassVisitor classVisitor = new PrimaryTransformerClassVisitor(classfileBuffer, classWriter);
         classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
         
         // This is to write the byte array to a file.

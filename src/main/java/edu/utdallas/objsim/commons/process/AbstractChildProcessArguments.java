@@ -45,8 +45,8 @@ public abstract class AbstractChildProcessArguments implements Serializable {
         this.coveringTestNames = coveringTestNames;
     }
     
-    protected AbstractChildProcessArguments(final String patchedMethodName) {
-    	this.patchedMethodName = patchedMethodName;
+    protected AbstractChildProcessArguments() {
+    	this.patchedMethodName = null;
     	this.coveringTestNames = null;
 }
 

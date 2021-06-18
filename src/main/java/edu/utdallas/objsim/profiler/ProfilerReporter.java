@@ -50,6 +50,7 @@ class ProfilerReporter {
 
     public synchronized void reportSnapshots(final String testName, final Wrapped[] snapshots) {
         this.dos.writeByte(ControlId.REPORT_SNAPSHOTS);
+        System.out.println("In reportSnapshots");
         this.dos.writeString(testName);
         this.dos.write(snapshots);
         this.dos.flush();

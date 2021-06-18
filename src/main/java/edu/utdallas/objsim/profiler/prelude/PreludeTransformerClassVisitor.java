@@ -23,6 +23,7 @@ package edu.utdallas.objsim.profiler.prelude;
 import edu.utdallas.objsim.commons.asm.MethodUtils;
 import edu.utdallas.objsim.commons.relational.FieldsDom;
 import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 
 import static edu.utdallas.objsim.commons.misc.NameUtils.composeMethodFullName;
@@ -54,7 +55,14 @@ public class PreludeTransformerClassVisitor extends ClassVisitor {
         this.patchedMethodFullName = patchedMethodFullName;
     }
 
-    @Override
+    public PreludeTransformerClassVisitor(ClassVisitor classVisitor, byte[] classFileBytes, FieldsDom fieldsDom) {
+        super(ASM7, classVisitor);
+        this.classFileBytes = classFileBytes;
+        this.fieldsDom = fieldsDom;
+        this.patchedMethodFullName = null;
+    }
+
+	@Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         this.owner = name;
         super.visit(version, access, name, signature, superName, interfaces);
@@ -69,7 +77,8 @@ public class PreludeTransformerClassVisitor extends ClassVisitor {
 //            System.out.printf("INFO: %d INVOKESPECIAL instruction(s) will be skipped.%n", skips);
         }
         final String methodFullName = composeMethodFullName(this.owner, name, descriptor);
-        if (this.patchedMethodFullName.equals(methodFullName)) {
+        // Austin Mordahl: Adding extra condition here to treat basically every method as a patched method.
+        if (this.patchedMethodFullName.equals(methodFullName) || this.patchedMethodFullName == null) {
             final MethodVisitor decorator = new PatchedMethodDecorator(defMethodVisitor, skips);
             return new FieldAccessRecorderMethodVisitor(decorator, this.fieldsDom);
         }

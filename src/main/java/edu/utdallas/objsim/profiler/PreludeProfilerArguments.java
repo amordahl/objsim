@@ -41,8 +41,8 @@ class PreludeProfilerArguments extends AbstractChildProcessArguments {
 		this.whiteListPrefix = whiteListPrefix;
 	}
 
-	PreludeProfilerArguments(final String whiteListPrefix, final String patchedMethodName) {
-		super(patchedMethodName);
+	PreludeProfilerArguments(final String whiteListPrefix) {
+		super();
 		this.whiteListPrefix = whiteListPrefix;
 	}
 
