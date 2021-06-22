@@ -55,9 +55,7 @@ public final class SnapshotTracker {
             	return true;
 //                final String className = field.getDeclaringClass().getName();
 //                final Set<String> fieldNames = accessedFields.get(className);
-//                final boolean b = fieldNames == null || fieldNames.contains(field.getName());
-//                System.out.printf("Evaluation of inclusion predicate on %s is %b\n", field.toString(), b);
-//                return b;
+//                return fieldNames == null || fieldNames.contains(field.getName());
             }
         };
     }

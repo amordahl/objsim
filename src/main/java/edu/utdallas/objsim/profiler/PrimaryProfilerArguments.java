@@ -65,4 +65,18 @@ class PrimaryProfilerArguments extends AbstractChildProcessArguments {
     public Collection<Integer> getAccessedFields() {
         return this.accessedFields;
     }
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("PrimaryProfilerArguments: [");
+		sb.append(fieldsDom.toString());
+		sb.append(",");
+		sb.append(accessedFields.toString());
+		sb.append("]");
+		return sb.toString();
+	}
+    
+    
+    
 }
