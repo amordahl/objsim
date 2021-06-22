@@ -52,9 +52,10 @@ public final class SnapshotTracker {
         inclusionPredicate = new InclusionPredicate() {
             @Override
             public boolean test(final Field field) {
-                final String className = field.getDeclaringClass().getName();
-                final Set<String> fieldNames = accessedFields.get(className);
-                return fieldNames == null || fieldNames.contains(field.getName());
+            	return true;
+//                final String className = field.getDeclaringClass().getName();
+//                final Set<String> fieldNames = accessedFields.get(className);
+//                return fieldNames == null || fieldNames.contains(field.getName());
             }
         };
     }

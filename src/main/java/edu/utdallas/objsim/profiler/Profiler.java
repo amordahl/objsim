@@ -53,6 +53,7 @@ import org.pitest.util.SafeDataInputStream;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -90,42 +91,62 @@ public final class Profiler {
 
             final AbstractChildProcessArguments arguments = dis.read(AbstractChildProcessArguments.class);
 
+            System.out.println("Arguments successfully read in: " + arguments.toString());
             final boolean isPreludeStage = arguments instanceof PreludeProfilerArguments;
 
             final ClassLoader contextClassLoader = IsolationUtils.getContextClassLoader();
             ClassByteArraySource byteArraySource = new ClassloaderByteArraySource(contextClassLoader);
             byteArraySource = new CachingByteArraySource(byteArraySource, CACHE_SIZE);
 
-            final FieldsDom fieldsDom;
+            FieldsDom fieldsDom;
             final ClassFileTransformer transformer;
             if (isPreludeStage) {
-                final String whiteListPrefix = ((PreludeProfilerArguments) arguments).getWhiteListPrefix();
-                fieldsDom = new FieldsDom();
-                System.out.println("Creating new prelude transformer");
-                transformer = new PreludeTransformer(byteArraySource, whiteListPrefix, fieldsDom);
+            	return;
+//                final String whiteListPrefix = ((PreludeProfilerArguments) arguments).getWhiteListPrefix();
+//                fieldsDom = new FieldsDom();
+//                System.out.println("Creating new prelude transformer");
+//                transformer = new PreludeTransformer(byteArraySource, whiteListPrefix, fieldsDom);
             } else {
                 fieldsDom = ((PrimaryProfilerArguments) arguments).getFieldsDom();
-                final Collection<Integer> accessedFields = ((PrimaryProfilerArguments) arguments).getAccessedFields();
+                if (fieldsDom == null) fieldsDom = new FieldsDom();
+                Collection<Integer> accessedFields = ((PrimaryProfilerArguments) arguments).getAccessedFields();
+                if (accessedFields == null) accessedFields = new ArrayList<Integer>();
                 SnapshotTracker.setAccessedFields(fieldsDom, accessedFields);
                 System.out.println("Creating new primary transformer");
                 transformer = new PrimaryTransformer(byteArraySource);
             }
-            HotSwapAgent.addTransformer(transformer);
 
-            final ProfilerReporter reporter = new ProfilerReporter(socket.getOutputStream());
+				HotSwapAgent.addTransformer(transformer);
+				System.out.println("Transformer added. Now creating reporter.");
+				ProfilerReporter reporter = null;
+				OutputStream os = null;
+	            try {
+	            	os = socket.getOutputStream();
+				} catch (NoClassDefFoundError nc) {
+					System.out.println("Caught it in the inner loop!");
+					System.out.println(nc.getMessage());
+				}
+	            reporter = new ProfilerReporter(os);
+				Collection<String> testCases = new ArrayList<String>();
+				testCases.add("org.jfree.chart.plot.junit.MultiplePiePlotTests.testConstructor");
+				testCases.add("org.jfree.chart.plot.junit.MultiplePiePlotTests.testCloning");
+				testCases.add("org.jfree.chart.plot.junit.MultiplePiePlotTests.testEquals");
+				testCases.add("org.jfree.chart.plot.junit.MultiplePiePlotTests.testSerialization");
+				final JUnitRunner runner = new JUnitRunner(testNameToTestUnit(testCases));
+				runner.setTestUnits(decorateTestCases(runner.getTestUnits(), reporter));
+				runner.run();
+         
+				if (isPreludeStage) {
+				    reporter.reportFieldsDom(fieldsDom);
+				    reporter.reportFieldAccesses(FieldAccessRecorder.getFieldAccesses());
+				}
 
-            final JUnitRunner runner = new JUnitRunner(testNameToTestUnit(Arrays.asList(new String[] {"org.jfree.chart.plot.junit.MultiplePiePlotTests::testConstructor"})));
-            runner.setTestUnits(decorateTestCases(runner.getTestUnits(), reporter));
-            runner.run();
+				System.out.println("Profiler is DONE!");
+				reporter.done(ExitCode.OK);
 
-            if (isPreludeStage) {
-                reporter.reportFieldsDom(fieldsDom);
-                reporter.reportFieldAccesses(FieldAccessRecorder.getFieldAccesses());
-            }
-
-            System.out.println("Profiler is DONE!");
-            reporter.done(ExitCode.OK);
-        } catch (Throwable t) {
+        } catch (Exception t) {
+        	System.out.println("In the catch block! Caught a " + t.getClass().getName());
+        	System.out.println(t.getMessage());
             t.printStackTrace();
         }
     }
@@ -156,10 +177,12 @@ public final class Profiler {
 
     private static List<TestUnit> testNameToTestUnit(final Collection<String> testCaseNames)
             throws Exception {
+    	System.out.println(String.format("testCaseNames: %s", testCaseNames.toString()));
         final List<TestUnit> res = new LinkedList<>();
         for (final String testCaseName : testCaseNames) {
             final Pair<String, String> methodNameParts =
                     decomposeMethodName(NameUtils.sanitizeExtendedTestName(testCaseName));
+            System.out.println(String.format("methodNameParts: %s", methodNameParts.toString()));
             final Class<?> testSuite = Class.forName(methodNameParts.getLeft());
             Method testCase = null;
             for (final Method method : testSuite.getMethods()) {
@@ -257,9 +280,12 @@ public final class Profiler {
 
 	private static ProfilerProcess runProcess(final ProcessArgs defaultProcessArgs, final String whiteListPrefix)
 			throws IOException, InterruptedException {
-		final Pair<FieldsDom, ? extends List<Integer>> preludeResult = runPrelude(defaultProcessArgs, whiteListPrefix);
-		final FieldsDom fieldsDom = preludeResult.getLeft();
-		final List<Integer> accessedFields = preludeResult.getRight();
+//		final Pair<FieldsDom, ? extends List<Integer>> preludeResult = runPrelude(defaultProcessArgs, whiteListPrefix);
+//		FieldsDom fieldsDom = preludeResult.getLeft();
+//		List<Integer> accessedFields = preludeResult.getRight();
+//		if (fieldsDom == null) {
+		final FieldsDom fieldsDom = new FieldsDom();
+		final List<Integer> accessedFields = new ArrayList<Integer>();
 		final AbstractChildProcessArguments arguments = new PrimaryProfilerArguments(fieldsDom, accessedFields);
 		final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
 		process.start();
