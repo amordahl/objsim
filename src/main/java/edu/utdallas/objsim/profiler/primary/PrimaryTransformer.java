@@ -76,10 +76,10 @@ public class PrimaryTransformer implements ClassFileTransformer {
                             ProtectionDomain protectionDomain,
                             byte[] classfileBuffer) {
     	if (className.contains("utdallas")) {
-    		System.err.println("Skipping class " + className);
+    		System.out.println("Skipping class " + className);
     		return null;
     	}
-    	System.err.println("ClassName is " + className);
+    	System.out.println("[Primary Transformer] ClassName is " + className);
         final ClassReader classReader = new ClassReader(classfileBuffer);
         final ClassWriter classWriter = new ComputeClassWriter(this.byteArraySource, this.cache, pickFlags(classfileBuffer));
         final ClassVisitor classVisitor = new PrimaryTransformerClassVisitor(classfileBuffer, classWriter);

@@ -52,9 +52,12 @@ public final class SnapshotTracker {
         inclusionPredicate = new InclusionPredicate() {
             @Override
             public boolean test(final Field field) {
-                final String className = field.getDeclaringClass().getName();
-                final Set<String> fieldNames = accessedFields.get(className);
-                return fieldNames == null || fieldNames.contains(field.getName());
+            	return true;
+//                final String className = field.getDeclaringClass().getName();
+//                final Set<String> fieldNames = accessedFields.get(className);
+//                final boolean b = fieldNames == null || fieldNames.contains(field.getName());
+//                System.out.printf("Evaluation of inclusion predicate on %s is %b\n", field.toString(), b);
+//                return b;
             }
         };
     }
@@ -65,19 +68,23 @@ public final class SnapshotTracker {
 
     public static void setAccessedFields(final FieldsDom fieldsDom,
                                          final Collection<Integer> fieldIndices) throws Exception {
-        accessedFields.clear();
-        for (final int fieldIndex : fieldIndices) {
-            final String fieldFullName = fieldsDom.get(fieldIndex);
-            final int indexOfSep = fieldFullName.lastIndexOf('.');
-            final String className = fieldFullName.substring(0, indexOfSep);
-            final String fieldName = fieldFullName.substring(1 + indexOfSep);
-            Set<String> fieldNames = accessedFields.get(className);
-            if (fieldNames == null) {
-                fieldNames = new HashSet<>();
-                accessedFields.put(className, fieldNames);
-            }
-            fieldNames.add(fieldName);
-        }
+        try {
+			accessedFields.clear();
+			for (final int fieldIndex : fieldIndices) {
+			    final String fieldFullName = fieldsDom.get(fieldIndex);
+			    final int indexOfSep = fieldFullName.lastIndexOf('.');
+			    final String className = fieldFullName.substring(0, indexOfSep);
+			    final String fieldName = fieldFullName.substring(1 + indexOfSep);
+			    Set<String> fieldNames = accessedFields.get(className);
+			    if (fieldNames == null) {
+			        fieldNames = new HashSet<>();
+			        accessedFields.put(className, fieldNames);
+			    }
+			    fieldNames.add(fieldName);
+			}
+		} catch (NullPointerException e) {
+			System.err.println("Null fieldsDom or fieldIndices. Setting everything null.");
+		}
     }
 
     /**

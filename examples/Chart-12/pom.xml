@@ -64,7 +64,6 @@
         <artifactId>objsim</artifactId>
         <version>1.0-SNAPSHOT</version>
         <configuration>
-            <inputCSVFile>input-file.csv</inputCSVFile>
             <failingTests>
                 <failingTest>org.jfree.chart.plot.junit.MultiplePiePlotTests::testConstructor</failingTest>
             </failingTests>

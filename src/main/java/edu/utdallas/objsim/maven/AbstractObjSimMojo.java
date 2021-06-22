@@ -65,15 +65,6 @@ public abstract class AbstractObjSimMojo extends AbstractMojo {
     // -----------------------
 
     /**
-     * The name of the file (in relative or absolute form) of the CSV file
-     * containing required information about patches.
-     * By default, the file <code>input-file.csv</code>, in the project
-     * base directory, shall be used.
-     */
-    @Parameter(property = "inputCSVFile", defaultValue = "input-file.csv")
-    protected File inputCSVFile;
-
-    /**
      * A list of originally failing test cases. You want to tell ObjSim which test
      * cases, among those that cover a patch location were originally failing.
      * The test cases should be fully qualified, and in either of the following
@@ -117,7 +108,6 @@ public abstract class AbstractObjSimMojo extends AbstractMojo {
                     .withClassPath(classPath)
                     .withCompatibleJREHome(this.compatibleJREHome)
                     .withChildJVMArgs(this.childJVMArgs)
-                    .withInputCSVFile(this.inputCSVFile)
                     .withFailingTests(this.failingTests)
                     .run();
         } catch (Exception e) {
@@ -133,10 +123,6 @@ public abstract class AbstractObjSimMojo extends AbstractMojo {
         this.compatibleJREHome = new File(jreHome);
         if (!this.compatibleJREHome.isDirectory()) {
             throw new MojoFailureException("Invalid JAVA_HOME/JRE_HOME");
-        }
-
-        if (!this.inputCSVFile.isFile()) {
-            throw new MojoFailureException("Missing and/or invalid input CSV file");
         }
 
         final List<String> temp = new LinkedList<>();

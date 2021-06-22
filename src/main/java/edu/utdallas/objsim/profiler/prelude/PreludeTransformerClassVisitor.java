@@ -74,7 +74,7 @@ public class PreludeTransformerClassVisitor extends ClassVisitor {
         int skips = 0;
         if (name.equals("<init>")) {
             skips = 1 + MethodUtils.getFirstSpecialInvoke(this.classFileBytes, descriptor);
-//            System.out.printf("INFO: %d INVOKESPECIAL instruction(s) will be skipped.%n", skips);
+            System.out.printf("INFO: %d INVOKESPECIAL instruction(s) will be skipped.%n", skips);
         }
         final String methodFullName = composeMethodFullName(this.owner, name, descriptor);
         // Austin Mordahl: Adding extra condition here to treat basically every method as a patched method.

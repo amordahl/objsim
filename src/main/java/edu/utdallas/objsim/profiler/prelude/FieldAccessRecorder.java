@@ -55,6 +55,7 @@ public final class FieldAccessRecorder {
     }
 
     public static void registerFieldAccess(final int fieldIndex) {
+    	System.out.println("Field access registered at index " + fieldIndex);
         final long[] bitmap = fieldAccessBitmap[methodEntries > 0 ? 1 : 0];
         final int index = (fieldIndex / Long.SIZE) % bitmap.length;
         bitmap[index] |= 1L << (fieldIndex % Long.SIZE);

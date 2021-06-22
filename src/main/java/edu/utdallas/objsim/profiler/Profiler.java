@@ -35,6 +35,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.junit.internal.RealSystem;
 import org.junit.runner.manipulation.Filter;
 import org.pitest.boot.HotSwapAgent;
 import org.pitest.classinfo.CachingByteArraySource;
@@ -53,10 +54,12 @@ import org.pitest.util.SafeDataInputStream;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -99,10 +102,11 @@ public final class Profiler {
             final FieldsDom fieldsDom;
             final ClassFileTransformer transformer;
             if (isPreludeStage) {
-                final String whiteListPrefix = ((PreludeProfilerArguments) arguments).getWhiteListPrefix();
-                fieldsDom = new FieldsDom();
-                System.out.println("Creating new prelude transformer");
-                transformer = new PreludeTransformer(byteArraySource, whiteListPrefix, fieldsDom);
+            	return;
+//                final String whiteListPrefix = ((PreludeProfilerArguments) arguments).getWhiteListPrefix();
+//                fieldsDom = new FieldsDom();
+//                System.out.println("Creating new prelude transformer");
+//                transformer = new PreludeTransformer(byteArraySource, whiteListPrefix, fieldsDom);
             } else {
                 fieldsDom = ((PrimaryProfilerArguments) arguments).getFieldsDom();
                 final Collection<Integer> accessedFields = ((PrimaryProfilerArguments) arguments).getAccessedFields();
@@ -112,9 +116,22 @@ public final class Profiler {
             }
             HotSwapAgent.addTransformer(transformer);
 
+            OutputStream os;
+            
+            System.out.println("Getting socket output stream.");
+            try {
+            	os = socket.getOutputStream();
+            } catch (SocketException se) {
+            	System.out.println("Exception when creating socket.");
+            	os = null;
+            }
+            System.out.println("Got socket output stream.");
+            System.out.println("About to create reporter");
             final ProfilerReporter reporter = new ProfilerReporter(socket.getOutputStream());
-
+            System.out.println("Reporter created.");
+            System.out.println("About to create runner.");
             final JUnitRunner runner = new JUnitRunner(testNameToTestUnit(Arrays.asList(new String[] {"org.jfree.chart.plot.junit.MultiplePiePlotTests::testConstructor"})));
+            System.out.println("Runner created");
             runner.setTestUnits(decorateTestCases(runner.getTestUnits(), reporter));
             runner.run();
 
@@ -257,10 +274,11 @@ public final class Profiler {
 
 	private static ProfilerProcess runProcess(final ProcessArgs defaultProcessArgs, final String whiteListPrefix)
 			throws IOException, InterruptedException {
-		final Pair<FieldsDom, ? extends List<Integer>> preludeResult = runPrelude(defaultProcessArgs, whiteListPrefix);
-		final FieldsDom fieldsDom = preludeResult.getLeft();
-		final List<Integer> accessedFields = preludeResult.getRight();
-		final AbstractChildProcessArguments arguments = new PrimaryProfilerArguments(fieldsDom, accessedFields);
+		// TODO: Why does the prelude process fail?
+//		final Pair<FieldsDom, ? extends List<Integer>> preludeResult = runPrelude(defaultProcessArgs, whiteListPrefix);
+//		final FieldsDom fieldsDom = preludeResult.getLeft();
+//		final List<Integer> accessedFields = preludeResult.getRight();
+		final AbstractChildProcessArguments arguments = new PrimaryProfilerArguments(null, null);
 		final ProfilerProcess process = new ProfilerProcess(defaultProcessArgs, arguments);
 		process.start();
 		process.waitToDie();

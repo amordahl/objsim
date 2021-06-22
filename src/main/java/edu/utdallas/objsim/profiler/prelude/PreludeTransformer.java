@@ -79,6 +79,7 @@ public class PreludeTransformer implements ClassFileTransformer {
                             Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain,
                             byte[] classfileBuffer) throws IllegalClassFormatException {
+    	System.out.println("Starting transformation!");
         if (!className.startsWith(this.whiteListPrefix)) {
             return null; // no transformation
         }

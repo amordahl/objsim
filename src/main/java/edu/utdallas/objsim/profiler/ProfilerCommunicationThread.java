@@ -95,8 +95,10 @@ class ProfilerCommunicationThread extends CommunicationThread {
         @Override
         @SuppressWarnings({"unchecked"})
         public void apply(final byte controlId, final SafeDataInputStream dis) {
+        	System.out.println("In apply method.");
             switch (controlId) {
                 case ControlId.REPORT_SNAPSHOTS:
+                	System.out.println("Attempting to read string from DIS.");
                     final String testName = dis.readString();
                     final Wrapped[] snapshots = dis.read(Wrapped[].class);
                     this.snapshots.put(testName, snapshots);
@@ -108,7 +110,7 @@ class ProfilerCommunicationThread extends CommunicationThread {
                     this.fieldAccesses = dis.read(ArrayList.class);
                     break;
                 default:
-                    throw new IllegalArgumentException("Unknown code: " + controlId);
+                	throw new IllegalArgumentException("Unknown code: " + controlId);
             }
         }
     }
